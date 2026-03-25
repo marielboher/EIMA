@@ -1,0 +1,74 @@
+## .NET / Visual Studio
+bin/
+obj/
+out/
+
+## Visual Studio
+.vs/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.userprefs
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Test / coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+*.coverage
+*.coveragexml
+coverage*.json
+coverage*.xml
+*.snupkg
+
+## Rider / VS Code / other IDEs
+.idea/
+*.sln.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+## OS
+.DS_Store
+Thumbs.db
+
+## EF / local secrets (opcional: no subir cadenas reales)
+# appsettings.*.local.json
+# secrets.json
+
+## Otros
+*.Cache
+*.dll.config
+*.ilk
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
