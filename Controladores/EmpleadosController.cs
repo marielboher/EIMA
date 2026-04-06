@@ -17,24 +17,26 @@ public class EmpleadosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Empleado>>> GetAll(CancellationToken ct)
+    public async Task<ActionResult<IEnumerable<Persona>>> GetAll(CancellationToken ct)
     {
-        var list = await _context.Empleados
+        var list = await _context.Personas
             .AsSplitQuery()
-            .Include(e => e.Rol)
-            .Include(e => e.TipoColaborador)
+            .Where(p => p.TipoColaboradorId != null)
+            .Include(p => p.Rol)
+            .Include(p => p.TipoColaborador)
             .ToListAsync(ct);
         return Ok(list);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Empleado>> GetById(int id, CancellationToken ct)
+    public async Task<ActionResult<Persona>> GetById(int id, CancellationToken ct)
     {
-        var empleado = await _context.Empleados
+        var empleado = await _context.Personas
             .AsSplitQuery()
-            .Include(e => e.Rol)
-            .Include(e => e.TipoColaborador)
-            .FirstOrDefaultAsync(e => e.Id == id, ct);
+            .Where(p => p.TipoColaboradorId != null)
+            .Include(p => p.Rol)
+            .Include(p => p.TipoColaborador)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
 
         return empleado == null ? NotFound() : Ok(empleado);
     }

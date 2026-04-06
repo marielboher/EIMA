@@ -11,9 +11,6 @@ public class EimaDbContext : DbContext
     }
 
     public DbSet<Persona> Personas => Set<Persona>();
-    public DbSet<Empleado> Empleados => Set<Empleado>();
-    public DbSet<Profesor> Profesores => Set<Profesor>();
-    public DbSet<Alumno> Alumnos => Set<Alumno>();
     public DbSet<Rol> Roles => Set<Rol>();
     public DbSet<TipoColaborador> TiposColaborador => Set<TipoColaborador>();
     public DbSet<Materia> Materias => Set<Materia>();
@@ -26,6 +23,7 @@ public class EimaDbContext : DbContext
     public DbSet<Clase> Clases => Set<Clase>();
     public DbSet<Asistencia> Asistencias => Set<Asistencia>();
     public DbSet<Consulta> Consultas => Set<Consulta>();
+    public DbSet<CuentaUsuario> CuentasUsuarios => Set<CuentaUsuario>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -38,45 +36,40 @@ public class EimaDbContext : DbContext
             entity.Property(e => e.Nombre).HasMaxLength(150).IsRequired();
             entity.Property(e => e.Apellido).HasMaxLength(150).IsRequired();
             entity.Property(e => e.Dni).HasMaxLength(32).IsRequired();
-            entity.Property(e => e.Telefono).HasMaxLength(50);
-            entity.Property(e => e.Direccion).HasMaxLength(300);
+            entity.Property(e => e.Telefono).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Direccion).HasMaxLength(300).IsRequired();
             entity.HasIndex(e => e.Dni).IsUnique();
 
-            entity.HasOne(p => p.Empleado)
-                .WithOne()
-                .HasForeignKey<Empleado>(e => e.Id)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(p => p.Alumno)
-                .WithOne()
-                .HasForeignKey<Alumno>(a => a.Id)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(p => p.Profesor)
-                .WithOne()
-                .HasForeignKey<Profesor>(pr => pr.Id)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<Empleado>(entity =>
-        {
-            entity.ToTable("Empleados");
-            entity.Property(e => e.Salario).HasPrecision(18, 2);
-        });
-
-        modelBuilder.Entity<Profesor>(entity =>
-        {
-            entity.ToTable("Profesores");
-            entity.Property(e => e.Especialidades).HasMaxLength(500);
-            entity.Property(e => e.Titulo).HasMaxLength(200);
-        });
-
-        modelBuilder.Entity<Alumno>(entity =>
-        {
-            entity.ToTable("Alumnos");
             entity.Property(e => e.Colegio).HasMaxLength(200);
             entity.Property(e => e.GradoCurso).HasMaxLength(100);
             entity.Property(e => e.NivelEducativo).HasMaxLength(100);
+            entity.Property(e => e.Especialidades).HasMaxLength(500);
+            entity.Property(e => e.Titulo).HasMaxLength(200);
+            entity.Property(e => e.Salario).HasPrecision(18, 2);
+
+            entity.HasOne(p => p.Rol)
+                .WithMany(r => r.Personas)
+                .HasForeignKey(p => p.RolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(p => p.TipoColaborador)
+                .WithMany(t => t.Personas)
+                .HasForeignKey(p => p.TipoColaboradorId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CuentaUsuario>(entity =>
+        {
+            entity.ToTable("CuentasUsuario");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CorreoElectronico).HasMaxLength(256).IsRequired();
+            entity.Property(e => e.HashContrasena).HasMaxLength(500).IsRequired();
+            entity.HasIndex(e => e.CorreoElectronico).IsUnique();
+            entity.HasIndex(e => e.PersonaId).IsUnique();
+            entity.HasOne(e => e.Persona)
+                .WithOne(p => p.CuentaUsuario)
+                .HasForeignKey<CuentaUsuario>(e => e.PersonaId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Rol>(entity =>
@@ -93,18 +86,6 @@ public class EimaDbContext : DbContext
             entity.Property(e => e.Descripcion).HasMaxLength(500);
         });
 
-        modelBuilder.Entity<Empleado>()
-            .HasOne(e => e.TipoColaborador)
-            .WithMany(t => t.Empleados)
-            .HasForeignKey(e => e.TipoColaboradorId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<Empleado>()
-            .HasOne(e => e.Rol)
-            .WithMany(r => r.Empleados)
-            .HasForeignKey(e => e.RolId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         modelBuilder.Entity<Materia>(entity =>
         {
             entity.ToTable("Materias");
@@ -117,9 +98,9 @@ public class EimaDbContext : DbContext
         modelBuilder.Entity<ProfesorMateria>(entity =>
         {
             entity.ToTable("ProfesoresMaterias");
-            entity.HasOne(e => e.Profesor)
+            entity.HasOne(e => e.Docente)
                 .WithMany(p => p.ProfesoresMaterias)
-                .HasForeignKey(e => e.ProfesorId)
+                .HasForeignKey(e => e.DocenteId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Materia)
                 .WithMany(m => m.ProfesoresMaterias)
@@ -131,9 +112,9 @@ public class EimaDbContext : DbContext
         {
             entity.ToTable("HorariosDisponibles");
             entity.Property(e => e.DiaSemana).HasMaxLength(50).IsRequired();
-            entity.HasOne(e => e.Profesor)
+            entity.HasOne(e => e.Docente)
                 .WithMany(p => p.HorariosDisponibles)
-                .HasForeignKey(e => e.ProfesorId)
+                .HasForeignKey(e => e.DocenteId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -159,9 +140,9 @@ public class EimaDbContext : DbContext
             entity.ToTable("InscripcionesMateria");
             entity.Property(e => e.Estado).HasMaxLength(50).IsRequired();
             entity.Property(e => e.MontoPagado).HasPrecision(18, 2);
-            entity.HasOne(e => e.Alumno)
+            entity.HasOne(e => e.Persona)
                 .WithMany(a => a.Inscripciones)
-                .HasForeignKey(e => e.AlumnoId)
+                .HasForeignKey(e => e.PersonaId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Materia)
                 .WithMany(m => m.Inscripciones)
@@ -177,9 +158,9 @@ public class EimaDbContext : DbContext
             entity.Property(e => e.Estado).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Comprobante).HasMaxLength(200);
             entity.Property(e => e.Observaciones).HasMaxLength(1000);
-            entity.HasOne(e => e.Alumno)
+            entity.HasOne(e => e.Persona)
                 .WithMany(a => a.Pagos)
-                .HasForeignKey(e => e.AlumnoId)
+                .HasForeignKey(e => e.PersonaId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.InscripcionMateria)
                 .WithMany(i => i.Pagos)
@@ -196,9 +177,9 @@ public class EimaDbContext : DbContext
                 .WithMany(m => m.Clases)
                 .HasForeignKey(e => e.MateriaId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Profesor)
-                .WithMany(p => p.Clases)
-                .HasForeignKey(e => e.ProfesorId)
+            entity.HasOne(e => e.Docente)
+                .WithMany(p => p.ClasesComoDocente)
+                .HasForeignKey(e => e.DocenteId)
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Aula)
                 .WithMany(a => a.Clases)
@@ -214,27 +195,24 @@ public class EimaDbContext : DbContext
                 .WithMany(c => c.Asistencias)
                 .HasForeignKey(e => e.ClaseId)
                 .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(e => e.Alumno)
+            entity.HasOne(e => e.Persona)
                 .WithMany(a => a.Asistencias)
-                .HasForeignKey(e => e.AlumnoId)
+                .HasForeignKey(e => e.PersonaId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(e => new { e.ClaseId, e.AlumnoId }).IsUnique();
+            entity.HasIndex(e => new { e.ClaseId, e.PersonaId }).IsUnique();
         });
 
         modelBuilder.Entity<Consulta>(entity =>
         {
             entity.ToTable("Consultas");
+            entity.Property(e => e.Materia).HasMaxLength(200).IsRequired();
             entity.Property(e => e.Asunto).HasMaxLength(200).IsRequired();
             entity.Property(e => e.Mensaje).HasMaxLength(4000).IsRequired();
             entity.Property(e => e.Estado).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Respuesta).HasMaxLength(4000);
-            entity.HasOne(e => e.Alumno)
+            entity.HasOne(e => e.Persona)
                 .WithMany(a => a.Consultas)
-                .HasForeignKey(e => e.AlumnoId)
-                .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.Materia)
-                .WithMany(m => m.Consultas)
-                .HasForeignKey(e => e.MateriaId)
+                .HasForeignKey(e => e.PersonaId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }

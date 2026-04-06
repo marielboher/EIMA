@@ -21,7 +21,7 @@ public class InscripcionesMateriaController : ControllerBase
     {
         var list = await _context.InscripcionesMateria
             .AsSplitQuery()
-            .Include(i => i.Alumno)
+            .Include(i => i.Persona)
             .Include(i => i.Materia)
             .Include(i => i.Pagos)
             .ToListAsync(ct);
@@ -33,7 +33,7 @@ public class InscripcionesMateriaController : ControllerBase
     {
         var inscripcion = await _context.InscripcionesMateria
             .AsSplitQuery()
-            .Include(i => i.Alumno)
+            .Include(i => i.Persona)
             .Include(i => i.Materia)
             .Include(i => i.Pagos)
             .FirstOrDefaultAsync(i => i.Id == id, ct);

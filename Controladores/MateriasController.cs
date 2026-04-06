@@ -21,12 +21,11 @@ public class MateriasController : ControllerBase
     {
         var list = await _context.Materias
             .AsSplitQuery()
-            .Include(m => m.ProfesoresMaterias).ThenInclude(pm => pm.Profesor)
-            .Include(m => m.Inscripciones).ThenInclude(i => i.Alumno)
+            .Include(m => m.ProfesoresMaterias).ThenInclude(pm => pm.Docente)
+            .Include(m => m.Inscripciones).ThenInclude(i => i.Persona)
             .Include(m => m.Inscripciones).ThenInclude(i => i.Pagos)
-            .Include(m => m.Clases).ThenInclude(c => c.Profesor)
+            .Include(m => m.Clases).ThenInclude(c => c.Docente)
             .Include(m => m.Clases).ThenInclude(c => c.Aula)
-            .Include(m => m.Consultas).ThenInclude(c => c.Alumno)
             .ToListAsync(ct);
         return Ok(list);
     }
@@ -36,12 +35,11 @@ public class MateriasController : ControllerBase
     {
         var materia = await _context.Materias
             .AsSplitQuery()
-            .Include(m => m.ProfesoresMaterias).ThenInclude(pm => pm.Profesor)
-            .Include(m => m.Inscripciones).ThenInclude(i => i.Alumno)
+            .Include(m => m.ProfesoresMaterias).ThenInclude(pm => pm.Docente)
+            .Include(m => m.Inscripciones).ThenInclude(i => i.Persona)
             .Include(m => m.Inscripciones).ThenInclude(i => i.Pagos)
-            .Include(m => m.Clases).ThenInclude(c => c.Profesor)
+            .Include(m => m.Clases).ThenInclude(c => c.Docente)
             .Include(m => m.Clases).ThenInclude(c => c.Aula)
-            .Include(m => m.Consultas).ThenInclude(c => c.Alumno)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
 
         return materia == null ? NotFound() : Ok(materia);

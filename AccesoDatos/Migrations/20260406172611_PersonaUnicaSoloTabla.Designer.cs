@@ -4,6 +4,7 @@ using AccesoDatos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AccesoDatos.Migrations
 {
     [DbContext(typeof(EimaDbContext))]
-    partial class EimaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260406172611_PersonaUnicaSoloTabla")]
+    partial class PersonaUnicaSoloTabla
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -157,10 +160,8 @@ namespace AccesoDatos.Migrations
                     b.Property<DateTime?>("FechaRespuesta")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Materia")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<int>("MateriaId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Mensaje")
                         .IsRequired()
@@ -175,6 +176,8 @@ namespace AccesoDatos.Migrations
                         .HasColumnType("nvarchar(4000)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MateriaId");
 
                     b.HasIndex("PersonaId");
 
@@ -613,11 +616,19 @@ namespace AccesoDatos.Migrations
 
             modelBuilder.Entity("Entidades.Consulta", b =>
                 {
+                    b.HasOne("Entidades.Materia", "Materia")
+                        .WithMany("Consultas")
+                        .HasForeignKey("MateriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Entidades.Persona", "Persona")
                         .WithMany("Consultas")
                         .HasForeignKey("PersonaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Materia");
 
                     b.Navigation("Persona");
                 });
@@ -750,6 +761,8 @@ namespace AccesoDatos.Migrations
             modelBuilder.Entity("Entidades.Materia", b =>
                 {
                     b.Navigation("Clases");
+
+                    b.Navigation("Consultas");
 
                     b.Navigation("Inscripciones");
 

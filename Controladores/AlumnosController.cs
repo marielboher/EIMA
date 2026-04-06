@@ -17,30 +17,32 @@ public class AlumnosController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Alumno>>> GetAll(CancellationToken ct)
+    public async Task<ActionResult<IEnumerable<Persona>>> GetAll(CancellationToken ct)
     {
-        var list = await _context.Alumnos
+        var list = await _context.Personas
             .AsSplitQuery()
-            .Include(a => a.Inscripciones).ThenInclude(i => i.Materia)
-            .Include(a => a.Inscripciones).ThenInclude(i => i.Pagos)
-            .Include(a => a.Pagos)
-            .Include(a => a.Asistencias).ThenInclude(asist => asist.Clase)
-            .Include(a => a.Consultas).ThenInclude(c => c.Materia)
+            .Where(p => p.Rol.Nombre == RolesSistema.Alumno)
+            .Include(p => p.Inscripciones).ThenInclude(i => i.Materia)
+            .Include(p => p.Inscripciones).ThenInclude(i => i.Pagos)
+            .Include(p => p.Pagos)
+            .Include(p => p.Asistencias).ThenInclude(asist => asist.Clase)
+            .Include(p => p.Consultas)
             .ToListAsync(ct);
         return Ok(list);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Alumno>> GetById(int id, CancellationToken ct)
+    public async Task<ActionResult<Persona>> GetById(int id, CancellationToken ct)
     {
-        var alumno = await _context.Alumnos
+        var alumno = await _context.Personas
             .AsSplitQuery()
-            .Include(a => a.Inscripciones).ThenInclude(i => i.Materia)
-            .Include(a => a.Inscripciones).ThenInclude(i => i.Pagos)
-            .Include(a => a.Pagos)
-            .Include(a => a.Asistencias).ThenInclude(asist => asist.Clase)
-            .Include(a => a.Consultas).ThenInclude(c => c.Materia)
-            .FirstOrDefaultAsync(a => a.Id == id, ct);
+            .Where(p => p.Rol.Nombre == RolesSistema.Alumno)
+            .Include(p => p.Inscripciones).ThenInclude(i => i.Materia)
+            .Include(p => p.Inscripciones).ThenInclude(i => i.Pagos)
+            .Include(p => p.Pagos)
+            .Include(p => p.Asistencias).ThenInclude(asist => asist.Clase)
+            .Include(p => p.Consultas)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
 
         return alumno == null ? NotFound() : Ok(alumno);
     }

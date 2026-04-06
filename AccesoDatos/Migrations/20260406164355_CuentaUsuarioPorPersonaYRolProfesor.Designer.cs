@@ -4,6 +4,7 @@ using AccesoDatos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AccesoDatos.Migrations
 {
     [DbContext(typeof(EimaDbContext))]
-    partial class EimaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260406164355_CuentaUsuarioPorPersonaYRolProfesor")]
+    partial class CuentaUsuarioPorPersonaYRolProfesor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,6 +33,9 @@ namespace AccesoDatos.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AlumnoId")
+                        .HasColumnType("int");
+
                     b.Property<int>("ClaseId")
                         .HasColumnType("int");
 
@@ -40,17 +46,14 @@ namespace AccesoDatos.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<int>("PersonaId")
-                        .HasColumnType("int");
-
                     b.Property<bool>("Presente")
                         .HasColumnType("bit");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PersonaId");
+                    b.HasIndex("AlumnoId");
 
-                    b.HasIndex("ClaseId", "PersonaId")
+                    b.HasIndex("ClaseId", "AlumnoId")
                         .IsUnique();
 
                     b.ToTable("Asistencias", (string)null);
@@ -98,9 +101,6 @@ namespace AccesoDatos.Migrations
                     b.Property<int>("CapacidadMaxima")
                         .HasColumnType("int");
 
-                    b.Property<int>("DocenteId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -122,13 +122,16 @@ namespace AccesoDatos.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<int>("ProfesorId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AulaId");
 
-                    b.HasIndex("DocenteId");
-
                     b.HasIndex("MateriaId");
+
+                    b.HasIndex("ProfesorId");
 
                     b.ToTable("Clases", (string)null);
                 });
@@ -140,6 +143,9 @@ namespace AccesoDatos.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AlumnoId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Asunto")
                         .IsRequired()
@@ -157,18 +163,13 @@ namespace AccesoDatos.Migrations
                     b.Property<DateTime?>("FechaRespuesta")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Materia")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.Property<int>("MateriaId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Mensaje")
                         .IsRequired()
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
-
-                    b.Property<int>("PersonaId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Respuesta")
                         .HasMaxLength(4000)
@@ -176,7 +177,9 @@ namespace AccesoDatos.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PersonaId");
+                    b.HasIndex("AlumnoId");
+
+                    b.HasIndex("MateriaId");
 
                     b.ToTable("Consultas", (string)null);
                 });
@@ -261,18 +264,18 @@ namespace AccesoDatos.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("DocenteId")
-                        .HasColumnType("int");
-
                     b.Property<TimeOnly>("HoraFin")
                         .HasColumnType("time");
 
                     b.Property<TimeOnly>("HoraInicio")
                         .HasColumnType("time");
 
+                    b.Property<int>("ProfesorId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("DocenteId");
+                    b.HasIndex("ProfesorId");
 
                     b.ToTable("HorariosDisponibles", (string)null);
                 });
@@ -284,6 +287,9 @@ namespace AccesoDatos.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AlumnoId")
+                        .HasColumnType("int");
 
                     b.Property<int>("ClasesTomadas")
                         .HasColumnType("int");
@@ -306,14 +312,11 @@ namespace AccesoDatos.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("PersonaId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("MateriaId");
+                    b.HasIndex("AlumnoId");
 
-                    b.HasIndex("PersonaId");
+                    b.HasIndex("MateriaId");
 
                     b.ToTable("InscripcionesMateria", (string)null);
                 });
@@ -362,6 +365,9 @@ namespace AccesoDatos.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AlumnoId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Comprobante")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -390,14 +396,11 @@ namespace AccesoDatos.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<int>("PersonaId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("InscripcionMateriaId");
+                    b.HasIndex("AlumnoId");
 
-                    b.HasIndex("PersonaId");
+                    b.HasIndex("InscripcionMateriaId");
 
                     b.ToTable("Pagos", (string)null);
                 });
@@ -410,17 +413,10 @@ namespace AccesoDatos.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<bool?>("ActivoComoColaborador")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Apellido")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
-
-                    b.Property<string>("Colegio")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Direccion")
                         .IsRequired()
@@ -432,64 +428,27 @@ namespace AccesoDatos.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
-                    b.Property<string>("Especialidades")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("FechaContratacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaFinContratacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaIngresoDocente")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime>("FechaRegistro")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("GradoCurso")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("NivelEducativo")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
-                    b.Property<int>("RolId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal?>("Salario")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<string>("Telefono")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<int?>("TipoColaboradorId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Titulo")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Dni")
                         .IsUnique();
 
-                    b.HasIndex("RolId");
-
-                    b.HasIndex("TipoColaboradorId");
-
                     b.ToTable("Personas", (string)null);
+
+                    b.UseTptMappingStrategy();
                 });
 
             modelBuilder.Entity("Entidades.ProfesorMateria", b =>
@@ -503,20 +462,20 @@ namespace AccesoDatos.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
 
-                    b.Property<int>("DocenteId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("FechaAsignacion")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("MateriaId")
                         .HasColumnType("int");
 
+                    b.Property<int>("ProfesorId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("DocenteId");
-
                     b.HasIndex("MateriaId");
+
+                    b.HasIndex("ProfesorId");
 
                     b.ToTable("ProfesoresMaterias", (string)null);
                 });
@@ -565,23 +524,100 @@ namespace AccesoDatos.Migrations
                     b.ToTable("TiposColaborador", (string)null);
                 });
 
+            modelBuilder.Entity("Entidades.Alumno", b =>
+                {
+                    b.HasBaseType("Entidades.Persona");
+
+                    b.Property<string>("Colegio")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("GradoCurso")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("NivelEducativo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("RolId")
+                        .HasColumnType("int");
+
+                    b.HasIndex("RolId");
+
+                    b.ToTable("Alumnos", (string)null);
+                });
+
+            modelBuilder.Entity("Entidades.Empleado", b =>
+                {
+                    b.HasBaseType("Entidades.Persona");
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("FechaContratacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaFinContratacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RolId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Salario")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("TipoColaboradorId")
+                        .HasColumnType("int");
+
+                    b.HasIndex("RolId");
+
+                    b.HasIndex("TipoColaboradorId");
+
+                    b.ToTable("Empleados", (string)null);
+                });
+
+            modelBuilder.Entity("Entidades.Profesor", b =>
+                {
+                    b.HasBaseType("Entidades.Persona");
+
+                    b.Property<string>("Especialidades")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("FechaIngreso")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RolId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Titulo")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasIndex("RolId");
+
+                    b.ToTable("Profesores", (string)null);
+                });
+
             modelBuilder.Entity("Entidades.Asistencia", b =>
                 {
+                    b.HasOne("Entidades.Alumno", "Alumno")
+                        .WithMany("Asistencias")
+                        .HasForeignKey("AlumnoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Entidades.Clase", "Clase")
                         .WithMany("Asistencias")
                         .HasForeignKey("ClaseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Entidades.Persona", "Persona")
-                        .WithMany("Asistencias")
-                        .HasForeignKey("PersonaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.Navigation("Alumno");
 
                     b.Navigation("Clase");
-
-                    b.Navigation("Persona");
                 });
 
             modelBuilder.Entity("Entidades.Clase", b =>
@@ -592,34 +628,42 @@ namespace AccesoDatos.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Entidades.Persona", "Docente")
-                        .WithMany("ClasesComoDocente")
-                        .HasForeignKey("DocenteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Entidades.Materia", "Materia")
                         .WithMany("Clases")
                         .HasForeignKey("MateriaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Entidades.Profesor", "Profesor")
+                        .WithMany("Clases")
+                        .HasForeignKey("ProfesorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Aula");
 
-                    b.Navigation("Docente");
-
                     b.Navigation("Materia");
+
+                    b.Navigation("Profesor");
                 });
 
             modelBuilder.Entity("Entidades.Consulta", b =>
                 {
-                    b.HasOne("Entidades.Persona", "Persona")
+                    b.HasOne("Entidades.Alumno", "Alumno")
                         .WithMany("Consultas")
-                        .HasForeignKey("PersonaId")
+                        .HasForeignKey("AlumnoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Persona");
+                    b.HasOne("Entidades.Materia", "Materia")
+                        .WithMany("Consultas")
+                        .HasForeignKey("MateriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Alumno");
+
+                    b.Navigation("Materia");
                 });
 
             modelBuilder.Entity("Entidades.CuentaUsuario", b =>
@@ -646,88 +690,129 @@ namespace AccesoDatos.Migrations
 
             modelBuilder.Entity("Entidades.HorarioDisponible", b =>
                 {
-                    b.HasOne("Entidades.Persona", "Docente")
+                    b.HasOne("Entidades.Profesor", "Profesor")
                         .WithMany("HorariosDisponibles")
-                        .HasForeignKey("DocenteId")
+                        .HasForeignKey("ProfesorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Docente");
+                    b.Navigation("Profesor");
                 });
 
             modelBuilder.Entity("Entidades.InscripcionMateria", b =>
                 {
+                    b.HasOne("Entidades.Alumno", "Alumno")
+                        .WithMany("Inscripciones")
+                        .HasForeignKey("AlumnoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Entidades.Materia", "Materia")
                         .WithMany("Inscripciones")
                         .HasForeignKey("MateriaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Entidades.Persona", "Persona")
-                        .WithMany("Inscripciones")
-                        .HasForeignKey("PersonaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.Navigation("Alumno");
 
                     b.Navigation("Materia");
-
-                    b.Navigation("Persona");
                 });
 
             modelBuilder.Entity("Entidades.Pago", b =>
                 {
+                    b.HasOne("Entidades.Alumno", "Alumno")
+                        .WithMany("Pagos")
+                        .HasForeignKey("AlumnoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Entidades.InscripcionMateria", "InscripcionMateria")
                         .WithMany("Pagos")
                         .HasForeignKey("InscripcionMateriaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Entidades.Persona", "Persona")
-                        .WithMany("Pagos")
-                        .HasForeignKey("PersonaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.Navigation("Alumno");
 
                     b.Navigation("InscripcionMateria");
-
-                    b.Navigation("Persona");
-                });
-
-            modelBuilder.Entity("Entidades.Persona", b =>
-                {
-                    b.HasOne("Entidades.Rol", "Rol")
-                        .WithMany("Personas")
-                        .HasForeignKey("RolId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Entidades.TipoColaborador", "TipoColaborador")
-                        .WithMany("Personas")
-                        .HasForeignKey("TipoColaboradorId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Rol");
-
-                    b.Navigation("TipoColaborador");
                 });
 
             modelBuilder.Entity("Entidades.ProfesorMateria", b =>
                 {
-                    b.HasOne("Entidades.Persona", "Docente")
-                        .WithMany("ProfesoresMaterias")
-                        .HasForeignKey("DocenteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Entidades.Materia", "Materia")
                         .WithMany("ProfesoresMaterias")
                         .HasForeignKey("MateriaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Docente");
+                    b.HasOne("Entidades.Profesor", "Profesor")
+                        .WithMany("ProfesoresMaterias")
+                        .HasForeignKey("ProfesorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Materia");
+
+                    b.Navigation("Profesor");
+                });
+
+            modelBuilder.Entity("Entidades.Alumno", b =>
+                {
+                    b.HasOne("Entidades.Persona", null)
+                        .WithOne("Alumno")
+                        .HasForeignKey("Entidades.Alumno", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Entidades.Rol", "Rol")
+                        .WithMany("Alumnos")
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Rol");
+                });
+
+            modelBuilder.Entity("Entidades.Empleado", b =>
+                {
+                    b.HasOne("Entidades.Persona", null)
+                        .WithOne("Empleado")
+                        .HasForeignKey("Entidades.Empleado", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Entidades.Rol", "Rol")
+                        .WithMany("Empleados")
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Entidades.TipoColaborador", "TipoColaborador")
+                        .WithMany("Empleados")
+                        .HasForeignKey("TipoColaboradorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Rol");
+
+                    b.Navigation("TipoColaborador");
+                });
+
+            modelBuilder.Entity("Entidades.Profesor", b =>
+                {
+                    b.HasOne("Entidades.Persona", null)
+                        .WithOne("Profesor")
+                        .HasForeignKey("Entidades.Profesor", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Entidades.Rol", "Rol")
+                        .WithMany("Profesores")
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Rol");
                 });
 
             modelBuilder.Entity("Entidades.Aula", b =>
@@ -751,6 +836,8 @@ namespace AccesoDatos.Migrations
                 {
                     b.Navigation("Clases");
 
+                    b.Navigation("Consultas");
+
                     b.Navigation("Inscripciones");
 
                     b.Navigation("ProfesoresMaterias");
@@ -758,31 +845,47 @@ namespace AccesoDatos.Migrations
 
             modelBuilder.Entity("Entidades.Persona", b =>
                 {
-                    b.Navigation("Asistencias");
-
-                    b.Navigation("ClasesComoDocente");
-
-                    b.Navigation("Consultas");
+                    b.Navigation("Alumno");
 
                     b.Navigation("CuentaUsuario");
 
-                    b.Navigation("HorariosDisponibles");
+                    b.Navigation("Empleado");
 
-                    b.Navigation("Inscripciones");
-
-                    b.Navigation("Pagos");
-
-                    b.Navigation("ProfesoresMaterias");
+                    b.Navigation("Profesor");
                 });
 
             modelBuilder.Entity("Entidades.Rol", b =>
                 {
-                    b.Navigation("Personas");
+                    b.Navigation("Alumnos");
+
+                    b.Navigation("Empleados");
+
+                    b.Navigation("Profesores");
                 });
 
             modelBuilder.Entity("Entidades.TipoColaborador", b =>
                 {
-                    b.Navigation("Personas");
+                    b.Navigation("Empleados");
+                });
+
+            modelBuilder.Entity("Entidades.Alumno", b =>
+                {
+                    b.Navigation("Asistencias");
+
+                    b.Navigation("Consultas");
+
+                    b.Navigation("Inscripciones");
+
+                    b.Navigation("Pagos");
+                });
+
+            modelBuilder.Entity("Entidades.Profesor", b =>
+                {
+                    b.Navigation("Clases");
+
+                    b.Navigation("HorariosDisponibles");
+
+                    b.Navigation("ProfesoresMaterias");
                 });
 #pragma warning restore 612, 618
         }

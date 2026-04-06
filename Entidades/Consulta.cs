@@ -3,8 +3,9 @@ namespace Entidades;
 public class Consulta
 {
     public int Id { get; set; }
-    public int AlumnoId { get; set; }
-    public int MateriaId { get; set; }
+    public int PersonaId { get; set; }
+    /// <summary>Texto libre con la materia o tema de la consulta (sin FK a la tabla Materias).</summary>
+    public string Materia { get; set; } = string.Empty;
     public string Asunto { get; set; } = string.Empty;
     public string Mensaje { get; set; } = string.Empty;
     public DateTime FechaConsulta { get; set; }
@@ -12,6 +13,5 @@ public class Consulta
     public string? Respuesta { get; set; }
     public DateTime? FechaRespuesta { get; set; }
 
-    public Alumno Alumno { get; set; } = null!;
-    public Materia Materia { get; set; } = null!;
+    public Persona Persona { get; set; } = null!;
 }

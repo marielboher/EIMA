@@ -16,16 +16,15 @@ public class PersonasController : ControllerBase
         _context = context;
     }
 
-    /// <summary>Lista personas con perfiles TPT vinculados (empleado, alumno o profesor).</summary>
+    /// <summary>Lista todas las personas con rol y tipo de colaborador (si aplica).</summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Persona>>> GetAll(CancellationToken ct)
     {
         var list = await _context.Personas
             .AsSplitQuery()
-            .Include(p => p.Empleado).ThenInclude(e => e.Rol)
-            .Include(p => p.Empleado).ThenInclude(e => e.TipoColaborador)
-            .Include(p => p.Alumno)
-            .Include(p => p.Profesor)
+            .Include(p => p.Rol)
+            .Include(p => p.TipoColaborador)
+            .Include(p => p.CuentaUsuario)
             .ToListAsync(ct);
         return Ok(list);
     }
@@ -35,10 +34,9 @@ public class PersonasController : ControllerBase
     {
         var persona = await _context.Personas
             .AsSplitQuery()
-            .Include(p => p.Empleado).ThenInclude(e => e.Rol)
-            .Include(p => p.Empleado).ThenInclude(e => e.TipoColaborador)
-            .Include(p => p.Alumno)
-            .Include(p => p.Profesor)
+            .Include(p => p.Rol)
+            .Include(p => p.TipoColaborador)
+            .Include(p => p.CuentaUsuario)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
         return persona == null ? NotFound() : Ok(persona);

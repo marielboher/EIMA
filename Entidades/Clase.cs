@@ -4,7 +4,8 @@ public class Clase
 {
     public int Id { get; set; }
     public int MateriaId { get; set; }
-    public int ProfesorId { get; set; }
+    /// <summary>Persona con rol docente que imparte la clase.</summary>
+    public int DocenteId { get; set; }
     public int AulaId { get; set; }
     public DateTime Fecha { get; set; }
     public TimeOnly HoraInicio { get; set; }
@@ -14,7 +15,7 @@ public class Clase
     public int CapacidadMaxima { get; set; }
 
     public Materia Materia { get; set; } = null!;
-    public Profesor Profesor { get; set; } = null!;
+    public Persona Docente { get; set; } = null!;
     public Aula Aula { get; set; } = null!;
     public ICollection<Asistencia> Asistencias { get; set; } = new List<Asistencia>();
 }

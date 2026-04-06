@@ -22,9 +22,9 @@ public class ClasesController : ControllerBase
         var list = await _context.Clases
             .AsSplitQuery()
             .Include(c => c.Materia)
-            .Include(c => c.Profesor)
+            .Include(c => c.Docente)
             .Include(c => c.Aula)
-            .Include(c => c.Asistencias).ThenInclude(a => a.Alumno)
+            .Include(c => c.Asistencias).ThenInclude(a => a.Persona)
             .ToListAsync(ct);
         return Ok(list);
     }
@@ -35,9 +35,9 @@ public class ClasesController : ControllerBase
         var clase = await _context.Clases
             .AsSplitQuery()
             .Include(c => c.Materia)
-            .Include(c => c.Profesor)
+            .Include(c => c.Docente)
             .Include(c => c.Aula)
-            .Include(c => c.Asistencias).ThenInclude(a => a.Alumno)
+            .Include(c => c.Asistencias).ThenInclude(a => a.Persona)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
         return clase == null ? NotFound() : Ok(clase);
