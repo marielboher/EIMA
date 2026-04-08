@@ -26,7 +26,6 @@ public class AlumnosController : ControllerBase
             .Include(p => p.Inscripciones).ThenInclude(i => i.Pagos)
             .Include(p => p.Pagos)
             .Include(p => p.Asistencias).ThenInclude(asist => asist.Clase)
-            .Include(p => p.Consultas)
             .ToListAsync(ct);
         return Ok(list);
     }
@@ -41,7 +40,6 @@ public class AlumnosController : ControllerBase
             .Include(p => p.Inscripciones).ThenInclude(i => i.Pagos)
             .Include(p => p.Pagos)
             .Include(p => p.Asistencias).ThenInclude(asist => asist.Clase)
-            .Include(p => p.Consultas)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
         return alumno == null ? NotFound() : Ok(alumno);

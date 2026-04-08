@@ -167,18 +167,21 @@ public sealed class ServicioAutenticacion
 
         var nombreRol = cuenta.Persona.Rol.Nombre;
         var token = CrearTokenJwt(cuenta.PersonaId, cuenta.CorreoElectronico, nombreRol);
-        return (true, new
+        return (true, new LoginExitosoDto
         {
-            accessToken = token.token,
-            tipoToken = "Bearer",
-            expiraEnUtc = token.expiraEnUtc,
-            mensaje = "Inicio de sesión correcto.",
-            rol = nombreRol,
-            personaId = cuenta.PersonaId
+            AccessToken = token.token,
+            TipoToken = "Bearer",
+            ExpiraEnUtc = token.expiraEnUtc,
+            EmitidoEnUtc = token.emitidoEnUtc,
+            Mensaje = "Inicio de sesión correcto.",
+            Rol = nombreRol,
+            PersonaId = cuenta.PersonaId,
+            RedireccionSugerida = RutasDashboardAutenticacion.ParaRol(nombreRol),
+            AlmacenamientoToken = _jwt.UsarCookieHttpOnly ? "cookieHttpOnly" : "bearer"
         }, StatusCodes.Status200OK);
     }
 
-    private (string token, DateTime expiraEnUtc) CrearTokenJwt(int personaId, string correo, string nombreRol)
+    private (string token, DateTime expiraEnUtc, DateTime emitidoEnUtc) CrearTokenJwt(int personaId, string correo, string nombreRol)
     {
         if (string.IsNullOrWhiteSpace(_jwt.ClaveFirma) || _jwt.ClaveFirma.Length < 32)
             throw new InvalidOperationException("Jwt:ClaveFirma debe tener al menos 32 caracteres.");
@@ -186,12 +189,15 @@ public sealed class ServicioAutenticacion
         var clave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.ClaveFirma));
         var creds = new SigningCredentials(clave, SecurityAlgorithms.HmacSha256);
         var ahora = DateTime.UtcNow;
-        var expira = ahora.AddMinutes(Math.Clamp(_jwt.MinutosExpiracion, 1, 10080));
+        var expira = ahora.AddMinutes(Math.Clamp(_jwt.MinutosExpiracion, 1, 1440));
 
+        var iatUnix = new DateTimeOffset(ahora).ToUnixTimeSeconds();
         var claims = new List<Claim>
         {
+            new("id", personaId.ToString()),
             new(JwtRegisteredClaimNames.Sub, personaId.ToString()),
             new(JwtRegisteredClaimNames.Email, correo),
+            new(JwtRegisteredClaimNames.Iat, iatUnix.ToString(), ClaimValueTypes.Integer64),
             new(ClaimTypes.NameIdentifier, personaId.ToString()),
             new(ClaimTypes.Email, correo),
             new(ClaimTypes.Role, nombreRol)
@@ -206,7 +212,7 @@ public sealed class ServicioAutenticacion
             signingCredentials: creds);
 
         var token = new JwtSecurityTokenHandler().WriteToken(jwt);
-        return (token, expira);
+        return (token, expira, ahora);
     }
 
     private static string NormalizarCorreo(string correo) =>

@@ -116,7 +116,42 @@ public static class ValidadorAutenticacion
         return r;
     }
 
-    private static bool CumplePoliticaContrasena(string contrasena, out List<string> mensajes)
+    /// <summary>Validación del correo al solicitar recuperación de contraseña.</summary>
+    public static ResultadoValidacion ValidarCorreoRecuperacion(RecuperacionContrasenaSolicitud s)
+    {
+        var r = new ResultadoValidacion();
+        if (string.IsNullOrWhiteSpace(s.Correo))
+            r.Agregar(nameof(s.Correo), "El correo electrónico es obligatorio.");
+        else if (!CorreoRegex.IsMatch(s.Correo.Trim()))
+            r.Agregar(nameof(s.Correo), "El correo no tiene un formato válido. Use usuario@dominio.com.");
+        return r;
+    }
+
+    /// <summary>Política HU02 (registro): misma reglas para la nueva contraseña al restablecer.</summary>
+    public static ResultadoValidacion ValidarRestablecerContrasena(RestablecerContrasenaSolicitud s)
+    {
+        var r = new ResultadoValidacion();
+        if (string.IsNullOrWhiteSpace(s.Token))
+            r.Agregar(nameof(s.Token), "El enlace de recuperación no es válido. Use el enlace recibido o solicite uno nuevo.");
+
+        if (string.IsNullOrWhiteSpace(s.NuevaContrasena))
+            r.Agregar(nameof(s.NuevaContrasena), "La contraseña es obligatoria.");
+        else if (!CumplePoliticaContrasena(s.NuevaContrasena, out var reqs))
+        {
+            foreach (var m in reqs)
+                r.Agregar(nameof(s.NuevaContrasena), m);
+        }
+
+        if (string.IsNullOrWhiteSpace(s.ConfirmarContrasena))
+            r.Agregar(nameof(s.ConfirmarContrasena), "Debe confirmar la contraseña. Complete el campo de confirmación.");
+        else if (!string.Equals(s.NuevaContrasena, s.ConfirmarContrasena, StringComparison.Ordinal))
+            r.Agregar(nameof(s.ConfirmarContrasena), "Las contraseñas no coinciden. Asegúrese de escribir la misma contraseña en ambos campos.");
+
+        return r;
+    }
+
+    /// <summary>Política de contraseña alineada con el registro (HU02).</summary>
+    public static bool CumplePoliticaContrasena(string contrasena, out List<string> mensajes)
     {
         mensajes = new List<string>();
         if (contrasena.Length < 8)

@@ -24,6 +24,7 @@ public class EimaDbContext : DbContext
     public DbSet<Asistencia> Asistencias => Set<Asistencia>();
     public DbSet<Consulta> Consultas => Set<Consulta>();
     public DbSet<CuentaUsuario> CuentasUsuarios => Set<CuentaUsuario>();
+    public DbSet<TokenRecuperacionContrasena> TokensRecuperacionContrasena => Set<TokenRecuperacionContrasena>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,6 +70,18 @@ public class EimaDbContext : DbContext
             entity.HasOne(e => e.Persona)
                 .WithOne(p => p.CuentaUsuario)
                 .HasForeignKey<CuentaUsuario>(e => e.PersonaId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TokenRecuperacionContrasena>(entity =>
+        {
+            entity.ToTable("TokensRecuperacionContrasena");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.HashToken).HasMaxLength(64).IsRequired();
+            entity.HasIndex(e => e.HashToken).IsUnique();
+            entity.HasOne(e => e.CuentaUsuario)
+                .WithMany()
+                .HasForeignKey(e => e.CuentaUsuarioId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -210,10 +223,6 @@ public class EimaDbContext : DbContext
             entity.Property(e => e.Mensaje).HasMaxLength(4000).IsRequired();
             entity.Property(e => e.Estado).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Respuesta).HasMaxLength(4000);
-            entity.HasOne(e => e.Persona)
-                .WithMany(a => a.Consultas)
-                .HasForeignKey(e => e.PersonaId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

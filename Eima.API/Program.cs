@@ -3,6 +3,7 @@ using AccesoDatos;
 using Controladores;
 using Controladores.Autenticacion;
 using Controladores.Opciones;
+using Eima.API.Middleware;
 using Entidades;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -17,8 +18,11 @@ builder.Services.AddDbContext<EimaDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.Configure<JwtOpciones>(builder.Configuration.GetSection(JwtOpciones.Seccion));
+builder.Services.Configure<RecuperacionContrasenaOpciones>(
+    builder.Configuration.GetSection(RecuperacionContrasenaOpciones.Seccion));
 builder.Services.AddSingleton<IPasswordHasher<CuentaUsuario>, PasswordHasher<CuentaUsuario>>();
 builder.Services.AddScoped<ServicioAutenticacion>();
+builder.Services.AddScoped<ServicioRecuperacionContrasena>();
 
 var jwtConfig = builder.Configuration.GetSection(JwtOpciones.Seccion).Get<JwtOpciones>() ?? new JwtOpciones();
 if (string.IsNullOrWhiteSpace(jwtConfig.ClaveFirma) || jwtConfig.ClaveFirma.Length < 32)
@@ -26,6 +30,10 @@ if (string.IsNullOrWhiteSpace(jwtConfig.ClaveFirma) || jwtConfig.ClaveFirma.Leng
     throw new InvalidOperationException(
         "Configure Jwt:ClaveFirma en appsettings (mínimo 32 caracteres) para firmar los tokens.");
 }
+
+var nombreCookieJwt = string.IsNullOrWhiteSpace(jwtConfig.NombreCookieAccessToken)
+    ? "eima_access_token"
+    : jwtConfig.NombreCookieAccessToken;
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -41,6 +49,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.ClaveFirma)),
             ClockSkew = TimeSpan.FromMinutes(1)
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (!string.IsNullOrEmpty(context.Token))
+                    return Task.CompletedTask;
+                if (context.Request.Cookies.TryGetValue(nombreCookieJwt, out var tokenCookie) &&
+                    !string.IsNullOrWhiteSpace(tokenCookie))
+                    context.Token = tokenCookie;
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddControllers()
@@ -48,6 +68,7 @@ builder.Services.AddControllers()
     .AddJsonOptions(o =>
     {
         o.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -86,6 +107,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<RequiereHttpsParaAutenticacionMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -4,6 +4,7 @@ using AccesoDatos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AccesoDatos.Migrations
 {
     [DbContext(typeof(EimaDbContext))]
-    partial class EimaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260408195728_ConsultasSinPersona")]
+    partial class ConsultasSinPersona
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -560,41 +563,6 @@ namespace AccesoDatos.Migrations
                     b.ToTable("TiposColaborador", (string)null);
                 });
 
-            modelBuilder.Entity("Entidades.TokenRecuperacionContrasena", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ConsumidoEnUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("CreadoEnUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("CuentaUsuarioId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("ExpiraEnUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("HashToken")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CuentaUsuarioId");
-
-                    b.HasIndex("HashToken")
-                        .IsUnique();
-
-                    b.ToTable("TokensRecuperacionContrasena", (string)null);
-                });
-
             modelBuilder.Entity("Entidades.Asistencia", b =>
                 {
                     b.HasOne("Entidades.Clase", "Clase")
@@ -747,17 +715,6 @@ namespace AccesoDatos.Migrations
                     b.Navigation("Docente");
 
                     b.Navigation("Materia");
-                });
-
-            modelBuilder.Entity("Entidades.TokenRecuperacionContrasena", b =>
-                {
-                    b.HasOne("Entidades.CuentaUsuario", "CuentaUsuario")
-                        .WithMany()
-                        .HasForeignKey("CuentaUsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CuentaUsuario");
                 });
 
             modelBuilder.Entity("Entidades.Aula", b =>

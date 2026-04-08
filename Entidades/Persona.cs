@@ -39,7 +39,6 @@ public class Persona
     public ICollection<InscripcionMateria> Inscripciones { get; set; } = new List<InscripcionMateria>();
     public ICollection<Pago> Pagos { get; set; } = new List<Pago>();
     public ICollection<Asistencia> Asistencias { get; set; } = new List<Asistencia>();
-    public ICollection<Consulta> Consultas { get; set; } = new List<Consulta>();
     public ICollection<ProfesorMateria> ProfesoresMaterias { get; set; } = new List<ProfesorMateria>();
     public ICollection<HorarioDisponible> HorariosDisponibles { get; set; } = new List<HorarioDisponible>();
     public ICollection<Clase> ClasesComoDocente { get; set; } = new List<Clase>();
