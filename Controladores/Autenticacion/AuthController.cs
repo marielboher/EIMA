@@ -1,4 +1,5 @@
 using Controladores.Opciones;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -61,6 +62,35 @@ public class AuthController : ControllerBase
         }
 
         return StatusCode(status, body);
+    }
+
+    /// <summary>Cierra sesión: elimina la cookie JWT si aplica; el cliente debe borrar el token Bearer en memoria y redirigir al login.</summary>
+    [Authorize]
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public IActionResult Logout()
+    {
+        var nombreCookie = string.IsNullOrWhiteSpace(_jwt.NombreCookieAccessToken)
+            ? "eima_access_token"
+            : _jwt.NombreCookieAccessToken;
+        if (_jwt.UsarCookieHttpOnly || Request.Cookies.ContainsKey(nombreCookie))
+        {
+            Response.Cookies.Delete(nombreCookie, new CookieOptions
+            {
+                Path = "/",
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Lax
+            });
+        }
+
+        return Ok(new
+        {
+            mensaje = "Sesión cerrada correctamente.",
+            redireccionSugerida = "/login",
+            debeEliminarTokenEnCliente = true
+        });
     }
 
     /// <summary>Solicita recuperación: CA01 correo inexistente; CA02 token único, un solo uso, 30 min (configurable).</summary>

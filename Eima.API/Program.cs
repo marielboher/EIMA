@@ -1,6 +1,7 @@
 using System.Text;
 using AccesoDatos;
 using Controladores;
+using Controladores.Admin;
 using Controladores.Autenticacion;
 using Controladores.Opciones;
 using Eima.API.Middleware;
@@ -23,6 +24,7 @@ builder.Services.Configure<RecuperacionContrasenaOpciones>(
 builder.Services.AddSingleton<IPasswordHasher<CuentaUsuario>, PasswordHasher<CuentaUsuario>>();
 builder.Services.AddScoped<ServicioAutenticacion>();
 builder.Services.AddScoped<ServicioRecuperacionContrasena>();
+builder.Services.AddScoped<ServicioCambioRolAdmin>();
 
 var jwtConfig = builder.Configuration.GetSection(JwtOpciones.Seccion).Get<JwtOpciones>() ?? new JwtOpciones();
 if (string.IsNullOrWhiteSpace(jwtConfig.ClaveFirma) || jwtConfig.ClaveFirma.Length < 32)
@@ -62,6 +64,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(PersonasController).Assembly)
