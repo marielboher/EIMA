@@ -15,6 +15,23 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// CORS: permitir al frontend (Vite) consumir la API en desarrollo.
+const string CorsPolicyFrontend = "Frontend";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyFrontend, policy =>
+        policy
+            .WithOrigins(
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "http://127.0.0.1:5173",
+                "https://127.0.0.1:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            // Necesario si se usan cookies HttpOnly (JWT en cookie) o credenciales.
+            .AllowCredentials());
+});
+
 builder.Services.AddDbContext<EimaDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -111,6 +128,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors(CorsPolicyFrontend);
 app.UseMiddleware<RequiereHttpsParaAutenticacionMiddleware>();
 
 app.UseAuthentication();
