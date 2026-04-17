@@ -9,7 +9,7 @@ internal static class RutasDashboardAutenticacion
         RolesSistema.Alumno => "/dashboard/alumno",
         RolesSistema.Profesor => "/dashboard/profesor",
         RolesSistema.Secretaria => "/dashboard/secretaria",
-        RolesSistema.SuperAdmin => "/dashboard/admin",
+        RolesSistema.SuperAdmin => "/dashboard",
         _ => "/dashboard"
     };
 }

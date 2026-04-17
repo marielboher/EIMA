@@ -16,11 +16,15 @@ public class PersonasController : ControllerBase
         _context = context;
     }
 
-    /// <summary>Lista todas las personas con rol y tipo de colaborador (si aplica).</summary>
+    /// <summary>Lista personas con rol, tipo de colaborador y cuenta. Opcionalmente filtra por <c>rolId</c>.</summary>
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Persona>>> GetAll(CancellationToken ct)
+    public async Task<ActionResult<IEnumerable<Persona>>> GetAll([FromQuery] int? rolId, CancellationToken ct)
     {
-        var list = await _context.Personas
+        IQueryable<Persona> query = _context.Personas;
+        if (rolId is int rid && rid > 0)
+            query = query.Where(p => p.RolId == rid);
+
+        var list = await query
             .AsSplitQuery()
             .Include(p => p.Rol)
             .Include(p => p.TipoColaborador)
