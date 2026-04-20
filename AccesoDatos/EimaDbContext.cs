@@ -218,11 +218,13 @@ public class EimaDbContext : DbContext
         modelBuilder.Entity<Consulta>(entity =>
         {
             entity.ToTable("Consultas");
+            entity.Property(e => e.Nombre).HasMaxLength(150).IsRequired();
+            entity.Property(e => e.Apellido).HasMaxLength(150).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(256).IsRequired();
+            entity.Property(e => e.Telefono).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Materia).HasMaxLength(200).IsRequired();
             entity.Property(e => e.Asunto).HasMaxLength(200).IsRequired();
             entity.Property(e => e.Mensaje).HasMaxLength(4000).IsRequired();
-            entity.Property(e => e.Estado).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.Respuesta).HasMaxLength(4000);
         });
     }
 }

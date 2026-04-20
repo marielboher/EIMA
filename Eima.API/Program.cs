@@ -121,6 +121,12 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<EimaDbContext>();
+    await MateriasCatalogoSemilla.AsegurarEnBdAsync(db);
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

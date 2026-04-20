@@ -1,5 +1,7 @@
 using AccesoDatos;
 using Entidades;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +16,36 @@ public class MateriasController : ControllerBase
     public MateriasController(EimaDbContext context)
     {
         _context = context;
+    }
+
+    /// <summary>Materias agrupadas por <see cref="Materia.Area"/> para el formulario de contacto (público).</summary>
+    [AllowAnonymous]
+    [HttpGet("catalogo-por-area")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<MateriaCatalogoAreaDto>>> GetCatalogoPorArea(CancellationToken ct)
+    {
+        var materias = await _context.Materias
+            .AsNoTracking()
+            .Where(m => m.Activa && m.Area != null && m.Area != "")
+            .Select(m => new { m.Id, m.Nombre, Area = m.Area! })
+            .ToListAsync(ct);
+
+        var resultado = new List<MateriaCatalogoAreaDto>();
+        foreach (var (area, nombres) in MateriasCatalogoSemilla.Filas)
+        {
+            var items = new List<MateriaCatalogoItemDto>();
+            foreach (var nombre in nombres)
+            {
+                var fila = materias.FirstOrDefault(m => m.Area == area && m.Nombre == nombre);
+                if (fila != null)
+                    items.Add(new MateriaCatalogoItemDto(fila.Id, fila.Nombre));
+            }
+
+            if (items.Count > 0)
+                resultado.Add(new MateriaCatalogoAreaDto(area, items));
+        }
+
+        return Ok(resultado);
     }
 
     [HttpGet]
