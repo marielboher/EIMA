@@ -1,6 +1,6 @@
 namespace Entidades;
 
-public class InscripcionMateria
+public class Inscripciones
 {
     public int Id { get; set; }
     public int PersonaId { get; set; }

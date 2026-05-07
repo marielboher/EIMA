@@ -17,9 +17,9 @@ public class InscripcionesMateriaController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<InscripcionMateria>>> GetAll(CancellationToken ct)
+    public async Task<ActionResult<IEnumerable<Inscripciones>>> GetAll(CancellationToken ct)
     {
-        var list = await _context.InscripcionesMateria
+        var list = await _context.Inscripciones
             .AsSplitQuery()
             .Include(i => i.Persona)
             .Include(i => i.Materia)
@@ -29,9 +29,9 @@ public class InscripcionesMateriaController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<InscripcionMateria>> GetById(int id, CancellationToken ct)
+    public async Task<ActionResult<Inscripciones>> GetById(int id, CancellationToken ct)
     {
-        var inscripcion = await _context.InscripcionesMateria
+        var inscripcion = await _context.Inscripciones
             .AsSplitQuery()
             .Include(i => i.Persona)
             .Include(i => i.Materia)

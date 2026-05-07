@@ -36,7 +36,7 @@ public class Persona
 
     public CuentaUsuario? CuentaUsuario { get; set; }
 
-    public ICollection<InscripcionMateria> Inscripciones { get; set; } = new List<InscripcionMateria>();
+    public ICollection<Inscripciones> Inscripciones { get; set; } = new List<Inscripciones>();
     public ICollection<Pago> Pagos { get; set; } = new List<Pago>();
     public ICollection<Asistencia> Asistencias { get; set; } = new List<Asistencia>();
     public ICollection<ProfesorMateria> ProfesoresMaterias { get; set; } = new List<ProfesorMateria>();

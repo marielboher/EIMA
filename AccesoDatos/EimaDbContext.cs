@@ -18,7 +18,7 @@ public class EimaDbContext : DbContext
     public DbSet<HorarioDisponible> HorariosDisponibles => Set<HorarioDisponible>();
     public DbSet<Aula> Aulas => Set<Aula>();
     public DbSet<HorarioAula> HorariosAula => Set<HorarioAula>();
-    public DbSet<InscripcionMateria> InscripcionesMateria => Set<InscripcionMateria>();
+    public DbSet<Inscripciones> Inscripciones => Set<Inscripciones>();
     public DbSet<Pago> Pagos => Set<Pago>();
     public DbSet<Clase> Clases => Set<Clase>();
     public DbSet<Asistencia> Asistencias => Set<Asistencia>();
@@ -148,7 +148,7 @@ public class EimaDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<InscripcionMateria>(entity =>
+        modelBuilder.Entity<Inscripciones>(entity =>
         {
             entity.ToTable("InscripcionesMateria");
             entity.Property(e => e.Estado).HasMaxLength(50).IsRequired();
@@ -175,7 +175,7 @@ public class EimaDbContext : DbContext
                 .WithMany(a => a.Pagos)
                 .HasForeignKey(e => e.PersonaId)
                 .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.InscripcionMateria)
+            entity.HasOne(e => e.Inscripcion)
                 .WithMany(i => i.Pagos)
                 .HasForeignKey(e => e.InscripcionMateriaId)
                 .OnDelete(DeleteBehavior.Restrict);

@@ -13,5 +13,5 @@ public class Pago
     public string? Observaciones { get; set; }
 
     public Persona Persona { get; set; } = null!;
-    public InscripcionMateria InscripcionMateria { get; set; } = null!;
+    public Inscripciones Inscripcion { get; set; } = null!;
 }

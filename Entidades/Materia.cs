@@ -11,6 +11,6 @@ public class Materia
     public bool Activa { get; set; }
 
     public ICollection<ProfesorMateria> ProfesoresMaterias { get; set; } = new List<ProfesorMateria>();
-    public ICollection<InscripcionMateria> Inscripciones { get; set; } = new List<InscripcionMateria>();
+    public ICollection<Inscripciones> Inscripciones { get; set; } = new List<Inscripciones>();
     public ICollection<Clase> Clases { get; set; } = new List<Clase>();
 }
