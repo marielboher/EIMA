@@ -51,7 +51,8 @@ public class PersonasController : ControllerBase
             telefono = persona.Telefono,
             direccion = persona.Direccion,
             correoElectronico = persona.CuentaUsuario?.CorreoElectronico ?? string.Empty,
-            rol = persona.Rol?.Nombre ?? string.Empty
+            rol = persona.Rol?.Nombre ?? string.Empty,
+            activo = persona.Activo
         });
     }
 
@@ -83,5 +84,19 @@ public class PersonasController : ControllerBase
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
         return persona == null ? NotFound() : Ok(persona);
+    }
+
+    /// <summary>Alterna el estado Activo de una persona (Baja/Alta lógica).</summary>
+    [HttpPatch("{id:int}/cambiar-estado")]
+    public async Task<IActionResult> CambiarEstado(int id, CancellationToken ct)
+    {
+        var persona = await _context.Personas.FindAsync(new object[] { id }, ct);
+        if (persona == null) return NotFound();
+
+        persona.Activo = !persona.Activo;
+        persona.FechaBaja = persona.Activo ? null : DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(ct);
+        return Ok(new { id = persona.Id, activo = persona.Activo, fechaBaja = persona.FechaBaja });
     }
 }

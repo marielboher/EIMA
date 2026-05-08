@@ -34,6 +34,10 @@ public class Persona
     public decimal? Salario { get; set; }
     public bool? ActivoComoColaborador { get; set; }
 
+    // --- Baja Lógica ---
+    public bool Activo { get; set; } = true;
+    public DateTime? FechaBaja { get; set; }
+
     public CuentaUsuario? CuentaUsuario { get; set; }
 
     public ICollection<Inscripciones> Inscripciones { get; set; } = new List<Inscripciones>();
