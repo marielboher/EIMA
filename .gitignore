@@ -72,3 +72,8 @@ Thumbs.db
 *.pidb
 *.svclog
 *.scc
+
+## Cambios personales (Ignorar para no subir configuraciones locales)
+global.json
+appsettings.json
+appsettings.*.json
