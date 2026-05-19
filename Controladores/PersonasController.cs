@@ -14,10 +14,12 @@ namespace Controladores;
 public class PersonasController : ControllerBase
 {
     private readonly EimaDbContext _context;
+    private readonly Microsoft.AspNetCore.Identity.IPasswordHasher<CuentaUsuario> _passwordHasher;
 
-    public PersonasController(EimaDbContext context)
+    public PersonasController(EimaDbContext context, Microsoft.AspNetCore.Identity.IPasswordHasher<CuentaUsuario> passwordHasher)
     {
         _context = context;
+        _passwordHasher = passwordHasher;
     }
 
     /// <summary>Datos de la persona autenticada (perfil): nombre, apellido, DNI, contacto y correo de cuenta.</summary>
@@ -83,8 +85,8 @@ public class PersonasController : ControllerBase
             var rolNombreNorm = rol.Trim().ToLowerInvariant() switch
             {
                 "alumno" => RolesSistema.Alumno,
-                "docente" => RolesSistema.Profesor,
-                "colaborador" => RolesSistema.Secretaria,
+                "docente" or "profesor" => RolesSistema.Profesor,
+                "colaborador" or "administrativo" => RolesSistema.Administrativo,
                 _ => rol.Trim()
             };
             query = query.Where(p => p.Rol.Nombre == rolNombreNorm);
@@ -153,7 +155,7 @@ public class PersonasController : ControllerBase
         persona.FechaBaja = persona.Activo ? null : DateTime.UtcNow;
 
         // Lógica especial de baja/alta para colaboradores administrativos (HU14)
-        if (persona.Rol?.Nombre == RolesSistema.Secretaria)
+        if (persona.Rol?.Nombre == RolesSistema.Administrativo)
         {
             if (!persona.Activo)
             {
@@ -205,6 +207,11 @@ public class PersonasController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Rol))
             validacion.Agregar(nameof(dto.Rol), "El rol es obligatorio.");
 
+        if (string.IsNullOrWhiteSpace(dto.CorreoElectronico))
+            validacion.Agregar(nameof(dto.CorreoElectronico), "El correo electrónico es obligatorio.");
+        else if (!System.Text.RegularExpressions.Regex.IsMatch(dto.CorreoElectronico.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            validacion.Agregar(nameof(dto.CorreoElectronico), "Formato de correo electrónico inválido.");
+
         // Validar salario positivo para colaborador (HU11 - CA03)
         if (dto.Rol != null && dto.Rol.Trim().ToLowerInvariant() == "colaborador" && dto.Salario.HasValue && dto.Salario.Value <= 0)
         {
@@ -215,6 +222,7 @@ public class PersonasController : ControllerBase
             return BadRequest(new { errores = validacion.Errores });
 
         var dniNormalizado = dto.Dni.Trim();
+        var correoNorm = dto.CorreoElectronico.Trim().ToLowerInvariant();
 
         // 2. Verificar DNI duplicado (HU08 - CA02)
         if (await _context.Personas.AnyAsync(p => p.Dni == dniNormalizado, ct))
@@ -228,12 +236,24 @@ public class PersonasController : ControllerBase
             });
         }
 
+        // Verificar Email duplicado
+        if (await _context.CuentasUsuarios.AnyAsync(c => c.CorreoElectronico == correoNorm, ct))
+        {
+            return BadRequest(new
+            {
+                errores = new[]
+                {
+                    new Controladores.Autenticacion.ErrorCampo(nameof(dto.CorreoElectronico), "El correo electrónico ya se encuentra registrado.")
+                }
+            });
+        }
+
         // 3. Mapeo de Roles de UI a Roles del Sistema (HU10)
         var rolNombre = (dto.Rol ?? "").Trim().ToLowerInvariant() switch
         {
             "alumno" => RolesSistema.Alumno,
-            "docente" => RolesSistema.Profesor,
-            "colaborador" => RolesSistema.Secretaria,
+            "docente" or "profesor" => RolesSistema.Profesor,
+            "colaborador" or "administrativo" => RolesSistema.Administrativo,
             _ => (dto.Rol ?? "").Trim().ToLowerInvariant()
         };
 
@@ -251,7 +271,7 @@ public class PersonasController : ControllerBase
 
         // 4. Resolver Tipo de Colaborador para Administrativos si aplica
         int? tipoColaboradorId = null;
-        if (rolNombre == RolesSistema.Secretaria && !string.IsNullOrWhiteSpace(dto.TipoColaborador))
+        if (rolNombre == RolesSistema.Administrativo && !string.IsNullOrWhiteSpace(dto.TipoColaborador))
         {
             var tipoNorm = dto.TipoColaborador.Trim();
             var tipo = await _context.TiposColaborador.FirstOrDefaultAsync(t => t.Tipo == tipoNorm, ct);
@@ -268,39 +288,66 @@ public class PersonasController : ControllerBase
             tipoColaboradorId = tipo.Id;
         }
 
-        // 5. Crear la Persona
-        var persona = new Persona
+        await using var tx = await _context.Database.BeginTransactionAsync(ct);
+        try
         {
-            Nombre = dto.Nombre.Trim(),
-            Apellido = dto.Apellido.Trim(),
-            Dni = dniNormalizado,
-            Telefono = dto.Telefono.Trim(),
-            Direccion = dto.Direccion.Trim(),
-            FechaRegistro = DateTime.UtcNow,
-            RolId = rol.Id,
-            Activo = true,
+            // 5. Crear la Persona
+            var persona = new Persona
+            {
+                Nombre = dto.Nombre.Trim(),
+                Apellido = dto.Apellido.Trim(),
+                Dni = dniNormalizado,
+                Telefono = dto.Telefono.Trim(),
+                Direccion = dto.Direccion.Trim(),
+                FechaRegistro = DateTime.UtcNow,
+                RolId = rol.Id,
+                Activo = true,
 
-            // Campos de Alumno
-            Colegio = rolNombre == RolesSistema.Alumno ? dto.Colegio?.Trim() : null,
-            GradoCurso = rolNombre == RolesSistema.Alumno ? dto.GradoCurso?.Trim() : null,
-            NivelEducativo = rolNombre == RolesSistema.Alumno ? dto.NivelEducativo?.Trim() : null,
+                // Campos de Alumno
+                Colegio = rolNombre == RolesSistema.Alumno ? dto.Colegio?.Trim() : null,
+                GradoCurso = rolNombre == RolesSistema.Alumno ? dto.GradoCurso?.Trim() : null,
+                NivelEducativo = rolNombre == RolesSistema.Alumno ? dto.NivelEducativo?.Trim() : null,
 
-            // Campos de Docente
-            Especialidades = rolNombre == RolesSistema.Profesor ? dto.Especialidades?.Trim() : null,
-            Titulo = rolNombre == RolesSistema.Profesor ? dto.Titulo?.Trim() : null,
-            FechaIngresoDocente = rolNombre == RolesSistema.Profesor ? (dto.FechaIngresoDocente ?? DateTime.UtcNow) : null,
+                // Campos de Docente
+                Especialidades = rolNombre == RolesSistema.Profesor ? dto.Especialidades?.Trim() : null,
+                Titulo = rolNombre == RolesSistema.Profesor ? dto.Titulo?.Trim() : null,
+                FechaIngresoDocente = rolNombre == RolesSistema.Profesor ? (dto.FechaIngresoDocente ?? DateTime.UtcNow) : null,
+                ValorClasePorHora = rolNombre == RolesSistema.Profesor ? dto.ValorClasePorHora : null,
+                ValorCursoCompleto = rolNombre == RolesSistema.Profesor ? dto.ValorCursoCompleto : null,
+                CantidadHoras = rolNombre == RolesSistema.Profesor ? dto.CantidadHoras : null,
+                MinimoAlumnosGrupo = rolNombre == RolesSistema.Profesor ? dto.MinimoAlumnosGrupo : null,
+                PorcentajeDescuentoGrupo = rolNombre == RolesSistema.Profesor ? dto.PorcentajeDescuentoGrupo : null,
 
-            // Campos de Colaborador
-            TipoColaboradorId = tipoColaboradorId,
-            FechaContratacion = rolNombre == RolesSistema.Secretaria ? (dto.FechaContratacion ?? DateTime.UtcNow) : null,
-            Salario = rolNombre == RolesSistema.Secretaria ? dto.Salario : null,
-            ActivoComoColaborador = rolNombre == RolesSistema.Secretaria ? true : null
-        };
+                // Campos de Colaborador
+                TipoColaboradorId = tipoColaboradorId,
+                FechaContratacion = rolNombre == RolesSistema.Administrativo ? (dto.FechaContratacion ?? DateTime.UtcNow) : null,
+                Salario = rolNombre == RolesSistema.Administrativo ? dto.Salario : null,
+                ActivoComoColaborador = rolNombre == RolesSistema.Administrativo ? true : null
+            };
 
-        _context.Personas.Add(persona);
-        await _context.SaveChangesAsync(ct);
+            _context.Personas.Add(persona);
+            await _context.SaveChangesAsync(ct);
 
-        return CreatedAtAction(nameof(GetById), new { id = persona.Id }, persona);
+            // 6. Crear la CuentaUsuario vinculada (Login) usando el DNI como contraseña por defecto
+            var cuenta = new CuentaUsuario
+            {
+                PersonaId = persona.Id,
+                CorreoElectronico = correoNorm,
+                HashContrasena = _passwordHasher.HashPassword(new CuentaUsuario(), dniNormalizado)
+            };
+
+            _context.CuentasUsuarios.Add(cuenta);
+            await _context.SaveChangesAsync(ct);
+
+            await tx.CommitAsync(ct);
+
+            return CreatedAtAction(nameof(GetById), new { id = persona.Id }, persona);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
     }
 
     /// <summary>Edita los datos de una persona con re-validación de DNI único (excluyendo a la propia persona) y formatos. (HU11, HU13)</summary>
@@ -343,6 +390,11 @@ public class PersonasController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Rol))
             validacion.Agregar(nameof(dto.Rol), "El rol es obligatorio.");
 
+        if (string.IsNullOrWhiteSpace(dto.CorreoElectronico))
+            validacion.Agregar(nameof(dto.CorreoElectronico), "El correo electrónico es obligatorio.");
+        else if (!System.Text.RegularExpressions.Regex.IsMatch(dto.CorreoElectronico.Trim(), @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            validacion.Agregar(nameof(dto.CorreoElectronico), "Formato de correo electrónico inválido.");
+
         // Validar salario positivo para colaborador (HU11 - CA03)
         if (dto.Rol != null && dto.Rol.Trim().ToLowerInvariant() == "colaborador" && dto.Salario.HasValue && dto.Salario.Value <= 0)
         {
@@ -353,6 +405,7 @@ public class PersonasController : ControllerBase
             return BadRequest(new { errores = validacion.Errores });
 
         var dniNormalizado = dto.Dni.Trim();
+        var correoNorm = dto.CorreoElectronico.Trim().ToLowerInvariant();
 
         // 2. Verificar DNI duplicado (excluyendo a la propia persona)
         if (await _context.Personas.AnyAsync(p => p.Dni == dniNormalizado && p.Id != id, ct))
@@ -366,12 +419,24 @@ public class PersonasController : ControllerBase
             });
         }
 
+        // Verificar Email duplicado en otra persona
+        if (await _context.CuentasUsuarios.AnyAsync(c => c.CorreoElectronico == correoNorm && c.PersonaId != id, ct))
+        {
+            return BadRequest(new
+            {
+                errores = new[]
+                {
+                    new Controladores.Autenticacion.ErrorCampo(nameof(dto.CorreoElectronico), "El correo electrónico ya se encuentra registrado por otro usuario.")
+                }
+            });
+        }
+
         // 3. Mapeo de Roles de UI a Roles del Sistema
         var rolNombre = (dto.Rol ?? "").Trim().ToLowerInvariant() switch
         {
             "alumno" => RolesSistema.Alumno,
-            "docente" => RolesSistema.Profesor,
-            "colaborador" => RolesSistema.Secretaria,
+            "docente" or "profesor" => RolesSistema.Profesor,
+            "colaborador" or "administrativo" => RolesSistema.Administrativo,
             _ => (dto.Rol ?? "").Trim().ToLowerInvariant()
         };
 
@@ -408,6 +473,11 @@ public class PersonasController : ControllerBase
             persona.Especialidades = null;
             persona.Titulo = null;
             persona.FechaIngresoDocente = null;
+            persona.ValorClasePorHora = null;
+            persona.ValorCursoCompleto = null;
+            persona.CantidadHoras = null;
+            persona.MinimoAlumnosGrupo = null;
+            persona.PorcentajeDescuentoGrupo = null;
 
             // Limpiar Colaborador
             persona.FechaContratacion = null;
@@ -416,7 +486,7 @@ public class PersonasController : ControllerBase
             persona.ActivoComoColaborador = null;
             persona.TipoColaboradorId = null;
         }
-        else if (rolUI == "docente")
+        else if (rolUI == "docente" || rolUI == "profesor")
         {
             // Limpiar Alumno
             persona.Colegio = null;
@@ -427,6 +497,11 @@ public class PersonasController : ControllerBase
             persona.Especialidades = dto.Especialidades?.Trim();
             persona.Titulo = dto.Titulo?.Trim();
             persona.FechaIngresoDocente = dto.FechaIngresoDocente ?? DateTime.UtcNow;
+            persona.ValorClasePorHora = dto.ValorClasePorHora;
+            persona.ValorCursoCompleto = dto.ValorCursoCompleto;
+            persona.CantidadHoras = dto.CantidadHoras;
+            persona.MinimoAlumnosGrupo = dto.MinimoAlumnosGrupo;
+            persona.PorcentajeDescuentoGrupo = dto.PorcentajeDescuentoGrupo;
 
             // Limpiar Colaborador
             persona.FechaContratacion = null;
@@ -435,7 +510,7 @@ public class PersonasController : ControllerBase
             persona.ActivoComoColaborador = null;
             persona.TipoColaboradorId = null;
         }
-        else if (rolUI == "colaborador")
+        else if (rolUI == "colaborador" || rolUI == "administrativo")
         {
             // Limpiar Alumno
             persona.Colegio = null;
@@ -446,6 +521,11 @@ public class PersonasController : ControllerBase
             persona.Especialidades = null;
             persona.Titulo = null;
             persona.FechaIngresoDocente = null;
+            persona.ValorClasePorHora = null;
+            persona.ValorCursoCompleto = null;
+            persona.CantidadHoras = null;
+            persona.MinimoAlumnosGrupo = null;
+            persona.PorcentajeDescuentoGrupo = null;
 
             // Opcionales de Colaborador
             persona.FechaContratacion = dto.FechaContratacion ?? DateTime.UtcNow;
@@ -471,7 +551,37 @@ public class PersonasController : ControllerBase
             }
         }
 
-        await _context.SaveChangesAsync(ct);
+        await using var tx = await _context.Database.BeginTransactionAsync(ct);
+        try
+        {
+            await _context.SaveChangesAsync(ct);
+
+            // Actualizar o crear CuentaUsuario
+            var cuenta = await _context.CuentasUsuarios.FirstOrDefaultAsync(c => c.PersonaId == id, ct);
+            if (cuenta == null)
+            {
+                cuenta = new CuentaUsuario
+                {
+                    PersonaId = id,
+                    CorreoElectronico = correoNorm,
+                    HashContrasena = _passwordHasher.HashPassword(new CuentaUsuario(), dniNormalizado)
+                };
+                _context.CuentasUsuarios.Add(cuenta);
+            }
+            else
+            {
+                cuenta.CorreoElectronico = correoNorm;
+            }
+            await _context.SaveChangesAsync(ct);
+
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+
         return Ok(persona);
     }
 }

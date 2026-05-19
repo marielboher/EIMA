@@ -80,9 +80,9 @@ public static class ValidadorAutenticacion
             r.Agregar(nameof(s.ConfirmarContrasena), "Las contraseñas no coinciden. Asegúrese de escribir la misma contraseña en ambos campos.");
 
         var tipoNorm = NormalizarTipoRegistroPublico(s.TipoRegistro);
-        if (tipoNorm == RolesSistema.SuperAdmin || tipoNorm == RolesSistema.Secretaria)
+        if (tipoNorm == RolesSistema.SuperAdmin || tipoNorm == RolesSistema.Administrativo)
             r.Agregar(nameof(s.TipoRegistro),
-                "Las cuentas de super administrador o secretaría no se crean desde el registro público. Solicite acceso al administrador del sistema.");
+                "Las cuentas de super administrador o administrativo no se crean desde el registro público. Solicite acceso al administrador del sistema.");
         else if (tipoNorm != RolesSistema.Alumno && tipoNorm != RolesSistema.Profesor)
             r.Agregar(nameof(s.TipoRegistro),
                 "Tipo de registro no válido. Omita el campo para usar \"alumno\" o envíe \"alumno\" o \"profesor\".");

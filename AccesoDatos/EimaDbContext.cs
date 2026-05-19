@@ -47,6 +47,9 @@ public class EimaDbContext : DbContext
             entity.Property(e => e.Especialidades).HasMaxLength(500);
             entity.Property(e => e.Titulo).HasMaxLength(200);
             entity.Property(e => e.Salario).HasPrecision(18, 2);
+            entity.Property(e => e.ValorClasePorHora).HasPrecision(18, 2);
+            entity.Property(e => e.ValorCursoCompleto).HasPrecision(18, 2);
+            entity.Property(e => e.PorcentajeDescuentoGrupo).HasPrecision(18, 2);
 
             entity.HasOne(p => p.Rol)
                 .WithMany(r => r.Personas)

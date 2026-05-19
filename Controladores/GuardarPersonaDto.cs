@@ -10,6 +10,7 @@ public class GuardarPersonaDto
     public string Dni { get; set; } = string.Empty;
     public string Telefono { get; set; } = string.Empty;
     public string Direccion { get; set; } = string.Empty;
+    public string CorreoElectronico { get; set; } = string.Empty;
     
     /// <summary>Rol proveniente del frontend: "alumno", "docente" o "colaborador".</summary>
     public string Rol { get; set; } = string.Empty;
@@ -23,6 +24,11 @@ public class GuardarPersonaDto
     public string? Especialidades { get; set; }
     public string? Titulo { get; set; }
     public DateTime? FechaIngresoDocente { get; set; }
+    public decimal? ValorClasePorHora { get; set; }
+    public decimal? ValorCursoCompleto { get; set; }
+    public double? CantidadHoras { get; set; }
+    public int? MinimoAlumnosGrupo { get; set; }
+    public decimal? PorcentajeDescuentoGrupo { get; set; }
 
     // --- Campos específicos de Colaborador (Administrativo) ---
     public string? TipoColaborador { get; set; }

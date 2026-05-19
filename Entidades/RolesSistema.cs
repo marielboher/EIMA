@@ -4,7 +4,7 @@ namespace Entidades;
 public static class RolesSistema
 {
     public const string SuperAdmin = "super_admin";
-    public const string Secretaria = "secretaria";
+    public const string Administrativo = "administrativo";  // Término inclusivo (reemplaza "secretaria")
     public const string Alumno = "alumno";
     public const string Profesor = "profesor";
 }
