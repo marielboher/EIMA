@@ -151,11 +151,22 @@ public class PersonasController : ControllerBase
 
         if (persona == null) return NotFound();
 
+        if (persona.Activo && persona.Rol?.Nombre == RolesSistema.SuperAdmin)
+        {
+            var superAdminsActivos = await _context.Personas
+                .CountAsync(p => p.Rol.Nombre == RolesSistema.SuperAdmin && p.Activo && p.Id != id, ct);
+
+            if (superAdminsActivos == 0)
+            {
+                return BadRequest(new { mensaje = "No se puede dar de baja al último superadministrador activo." });
+            }
+        }
+
         persona.Activo = !persona.Activo;
         persona.FechaBaja = persona.Activo ? null : DateTime.UtcNow;
 
-        // Lógica especial de baja/alta para colaboradores administrativos (HU14)
-        if (persona.Rol?.Nombre == RolesSistema.Administrativo)
+        // Lógica especial de baja/alta para colaboradores administrativos y profesores (HU14 / CA03)
+        if (persona.Rol?.Nombre == RolesSistema.Administrativo || persona.Rol?.Nombre == RolesSistema.Profesor)
         {
             if (!persona.Activo)
             {
@@ -549,6 +560,30 @@ public class PersonasController : ControllerBase
             {
                 persona.TipoColaboradorId = null;
             }
+        }
+        else if (rolUI == "super_admin")
+        {
+            // Limpiar Alumno
+            persona.Colegio = null;
+            persona.GradoCurso = null;
+            persona.NivelEducativo = null;
+
+            // Limpiar Docente
+            persona.Especialidades = null;
+            persona.Titulo = null;
+            persona.FechaIngresoDocente = null;
+            persona.ValorClasePorHora = null;
+            persona.ValorCursoCompleto = null;
+            persona.CantidadHoras = null;
+            persona.MinimoAlumnosGrupo = null;
+            persona.PorcentajeDescuentoGrupo = null;
+
+            // Limpiar Colaborador
+            persona.FechaContratacion = null;
+            persona.FechaFinContratacion = null;
+            persona.Salario = null;
+            persona.ActivoComoColaborador = null;
+            persona.TipoColaboradorId = null;
         }
 
         await using var tx = await _context.Database.BeginTransactionAsync(ct);
