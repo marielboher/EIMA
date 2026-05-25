@@ -65,7 +65,7 @@ public class PersonasController : ControllerBase
         [FromQuery] string? estado,
         [FromQuery] string? buscar,
         [FromQuery] int pagina = 1,
-        [FromQuery] int limite = 20,
+        [FromQuery] int limite = 5,
         CancellationToken ct = default)
     {
         IQueryable<Persona> query = _context.Personas;
@@ -87,6 +87,7 @@ public class PersonasController : ControllerBase
                 "alumno" => RolesSistema.Alumno,
                 "docente" or "profesor" => RolesSistema.Profesor,
                 "colaborador" or "administrativo" => RolesSistema.Administrativo,
+                "superadmin" or "super_admin" => RolesSistema.SuperAdmin,
                 _ => rol.Trim()
             };
             query = query.Where(p => p.Rol.Nombre == rolNombreNorm);
