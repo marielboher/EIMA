@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Controladores;
 
@@ -11,8 +12,8 @@ public class GuardarPersonaDto
     public string Telefono { get; set; } = string.Empty;
     public string Direccion { get; set; } = string.Empty;
     public string CorreoElectronico { get; set; } = string.Empty;
-    
-    /// <summary>Rol proveniente del frontend: "alumno", "docente" o "colaborador".</summary>
+
+    /// <summary>Rol proveniente del frontend: "alumno", "profesor" o "administrativo".</summary>
     public string Rol { get; set; } = string.Empty;
 
     // --- Campos específicos de Alumno ---
@@ -21,14 +22,11 @@ public class GuardarPersonaDto
     public string? NivelEducativo { get; set; }
 
     // --- Campos específicos de Docente (Profesor) ---
-    public string? Especialidades { get; set; }
     public string? Titulo { get; set; }
     public DateTime? FechaIngresoDocente { get; set; }
-    public decimal? ValorClasePorHora { get; set; }
-    public decimal? ValorCursoCompleto { get; set; }
-    public double? CantidadHoras { get; set; }
-    public int? MinimoAlumnosGrupo { get; set; }
-    public decimal? PorcentajeDescuentoGrupo { get; set; }
+
+    /// <summary>Materias asignadas al docente con sus valores específicos (valor/hora, cantidad de alumnos y horas).</summary>
+    public List<MateriaAsignacionDto> Materias { get; set; } = new();
 
     // --- Campos específicos de Colaborador (Administrativo) ---
     public string? TipoColaborador { get; set; }
@@ -36,4 +34,13 @@ public class GuardarPersonaDto
     public DateTime? FechaFinContratacion { get; set; }
     public decimal? Salario { get; set; }
     public bool? ActivoComoColaborador { get; set; }
+}
+
+/// <summary>Materia con valores específicos del docente: valor por hora, cantidad de alumnos y horas semanales.</summary>
+public class MateriaAsignacionDto
+{
+    public int MateriaId { get; set; }
+    public decimal? ValorHora { get; set; }
+    public int? CantAlumnos { get; set; }
+    public double? CantHoras { get; set; }
 }

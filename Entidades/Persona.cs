@@ -27,10 +27,10 @@ public class Persona
     public string? Especialidades { get; set; }
     public string? Titulo { get; set; }
     public DateTime? FechaIngresoDocente { get; set; }
-    public decimal? ValorClasePorHora { get; set; }
-    public decimal? ValorCursoCompleto { get; set; }
-    public double? CantidadHoras { get; set; }
-    public int? MinimoAlumnosGrupo { get; set; }
+    public decimal? ValorClasePorHora { get; set; } //sacar
+    public decimal? ValorCursoCompleto { get; set; } //sacar
+    public double? CantidadHoras { get; set; } //sacar
+    public int? MinimoAlumnosGrupo { get; set; } //sacar
     public decimal? PorcentajeDescuentoGrupo { get; set; }
 
     // --- Opcionales típicos de colaborador administrativo ---

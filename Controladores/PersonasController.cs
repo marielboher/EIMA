@@ -113,6 +113,7 @@ public class PersonasController : ControllerBase
             .Include(p => p.Rol)
             .Include(p => p.TipoColaborador)
             .Include(p => p.CuentaUsuario)
+            .Include(p => p.ProfesoresMaterias).ThenInclude(pm => pm.Materia)
             .OrderBy(p => p.Apellido)
             .ThenBy(p => p.Nombre)
             .Skip((pagina - 1) * limite)
@@ -137,6 +138,7 @@ public class PersonasController : ControllerBase
             .Include(p => p.Rol)
             .Include(p => p.TipoColaborador)
             .Include(p => p.CuentaUsuario)
+            .Include(p => p.ProfesoresMaterias).ThenInclude(pm => pm.Materia)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
         return persona == null ? NotFound() : Ok(persona);
@@ -321,14 +323,8 @@ public class PersonasController : ControllerBase
                 NivelEducativo = rolNombre == RolesSistema.Alumno ? dto.NivelEducativo?.Trim() : null,
 
                 // Campos de Docente
-                Especialidades = rolNombre == RolesSistema.Profesor ? dto.Especialidades?.Trim() : null,
                 Titulo = rolNombre == RolesSistema.Profesor ? dto.Titulo?.Trim() : null,
                 FechaIngresoDocente = rolNombre == RolesSistema.Profesor ? (dto.FechaIngresoDocente ?? DateTime.UtcNow) : null,
-                ValorClasePorHora = rolNombre == RolesSistema.Profesor ? dto.ValorClasePorHora : null,
-                ValorCursoCompleto = rolNombre == RolesSistema.Profesor ? dto.ValorCursoCompleto : null,
-                CantidadHoras = rolNombre == RolesSistema.Profesor ? dto.CantidadHoras : null,
-                MinimoAlumnosGrupo = rolNombre == RolesSistema.Profesor ? dto.MinimoAlumnosGrupo : null,
-                PorcentajeDescuentoGrupo = rolNombre == RolesSistema.Profesor ? dto.PorcentajeDescuentoGrupo : null,
 
                 // Campos de Colaborador
                 TipoColaboradorId = tipoColaboradorId,
@@ -350,6 +346,28 @@ public class PersonasController : ControllerBase
 
             _context.CuentasUsuarios.Add(cuenta);
             await _context.SaveChangesAsync(ct);
+
+            // 7. Crear registros de ProfesorMateria si el rol es profesor y se enviaron materias
+            if (rolNombre == RolesSistema.Profesor && dto.Materias != null && dto.Materias.Count > 0)
+            {
+                foreach (var m in dto.Materias)
+                {
+                    var materiaExiste = await _context.Materias.AnyAsync(mat => mat.Id == m.MateriaId, ct);
+                    if (!materiaExiste) continue;
+
+                    _context.ProfesoresMaterias.Add(new Entidades.ProfesorMateria
+                    {
+                        DocenteId = persona.Id,
+                        MateriaId = m.MateriaId,
+                        FechaAsignacion = DateTime.UtcNow,
+                        Activo = true,
+                        ValorHora = m.ValorHora,
+                        CantAlumnos = m.CantAlumnos,
+                        CantHoras = m.CantHoras
+                    });
+                }
+                await _context.SaveChangesAsync(ct);
+            }
 
             await tx.CommitAsync(ct);
 
@@ -473,7 +491,7 @@ public class PersonasController : ControllerBase
         persona.RolId = rol.Id;
 
         // 5. HU11 - CA02: Limpieza de campos opcionales del resto de roles para evitar orphan data (evitar contaminación cruzada)
-        var rolUI = dto.Rol.Trim().ToLowerInvariant();
+        var rolUI = (dto.Rol ?? string.Empty).Trim().ToLowerInvariant();
         if (rolUI == "alumno")
         {
             // Opcionales de Alumno
@@ -506,14 +524,8 @@ public class PersonasController : ControllerBase
             persona.NivelEducativo = null;
 
             // Opcionales de Docente
-            persona.Especialidades = dto.Especialidades?.Trim();
             persona.Titulo = dto.Titulo?.Trim();
             persona.FechaIngresoDocente = dto.FechaIngresoDocente ?? DateTime.UtcNow;
-            persona.ValorClasePorHora = dto.ValorClasePorHora;
-            persona.ValorCursoCompleto = dto.ValorCursoCompleto;
-            persona.CantidadHoras = dto.CantidadHoras;
-            persona.MinimoAlumnosGrupo = dto.MinimoAlumnosGrupo;
-            persona.PorcentajeDescuentoGrupo = dto.PorcentajeDescuentoGrupo;
 
             // Limpiar Colaborador
             persona.FechaContratacion = null;
@@ -609,6 +621,44 @@ public class PersonasController : ControllerBase
                 cuenta.CorreoElectronico = correoNorm;
             }
             await _context.SaveChangesAsync(ct);
+
+            // Actualizar materias del docente: reemplaza las existentes por las nuevas
+            var rolNombreEdit = (dto.Rol ?? "").Trim().ToLowerInvariant() switch
+            {
+                "alumno" => RolesSistema.Alumno,
+                "docente" or "profesor" => RolesSistema.Profesor,
+                "colaborador" or "administrativo" => RolesSistema.Administrativo,
+                _ => (dto.Rol ?? "").Trim().ToLowerInvariant()
+            };
+
+            if (rolNombreEdit == RolesSistema.Profesor)
+            {
+                var materiasActuales = await _context.ProfesoresMaterias
+                    .Where(pm => pm.DocenteId == id)
+                    .ToListAsync(ct);
+                _context.ProfesoresMaterias.RemoveRange(materiasActuales);
+
+                if (dto.Materias != null && dto.Materias.Count > 0)
+                {
+                    foreach (var m in dto.Materias)
+                    {
+                        var materiaExiste = await _context.Materias.AnyAsync(mat => mat.Id == m.MateriaId, ct);
+                        if (!materiaExiste) continue;
+
+                        _context.ProfesoresMaterias.Add(new Entidades.ProfesorMateria
+                        {
+                            DocenteId = id,
+                            MateriaId = m.MateriaId,
+                            FechaAsignacion = DateTime.UtcNow,
+                            Activo = true,
+                            ValorHora = m.ValorHora,
+                            CantAlumnos = m.CantAlumnos,
+                            CantHoras = m.CantHoras
+                        });
+                    }
+                }
+                await _context.SaveChangesAsync(ct);
+            }
 
             await tx.CommitAsync(ct);
         }

@@ -114,6 +114,7 @@ public class EimaDbContext : DbContext
         modelBuilder.Entity<ProfesorMateria>(entity =>
         {
             entity.ToTable("ProfesoresMaterias");
+            entity.Property(e => e.ValorHora).HasPrecision(18, 2);
             entity.HasOne(e => e.Docente)
                 .WithMany(p => p.ProfesoresMaterias)
                 .HasForeignKey(e => e.DocenteId)

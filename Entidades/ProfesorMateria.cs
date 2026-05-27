@@ -8,6 +8,13 @@ public class ProfesorMateria
     public DateTime FechaAsignacion { get; set; }
     public bool Activo { get; set; }
 
+    public decimal? ValorHora { get; set; }
+
+    public int? CantAlumnos { get; set; }
+
+
+    public double? CantHoras { get; set; }
+
     public Persona Docente { get; set; } = null!;
     public Materia Materia { get; set; } = null!;
 }
