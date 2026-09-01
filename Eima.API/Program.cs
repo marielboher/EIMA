@@ -167,26 +167,18 @@ app.Run();
 
 static string ResolverCadenaConexion(IConfiguration configuration)
 {
-    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+        ?? configuration["DATABASE_URL"];
     if (!string.IsNullOrWhiteSpace(databaseUrl))
         return ConvertirDatabaseUrl(databaseUrl);
 
     var desdeConfig = configuration.GetConnectionString("DefaultConnection");
-    if (!string.IsNullOrWhiteSpace(desdeConfig))
-    {
-        if (EsCadenaSqlServer(desdeConfig))
-        {
-            throw new InvalidOperationException(
-                "ConnectionStrings:DefaultConnection parece ser de SQL Server. " +
-                "Eliminá esa variable en Render y usá DATABASE_URL (vinculando la Postgres) " +
-                "o una cadena Npgsql con Host=...;Port=5432;...");
-        }
-
+    if (!string.IsNullOrWhiteSpace(desdeConfig) && !EsCadenaSqlServer(desdeConfig))
         return desdeConfig;
-    }
 
     throw new InvalidOperationException(
-        "Configure DATABASE_URL (Render) o ConnectionStrings:DefaultConnection (PostgreSQL).");
+        "No hay conexión PostgreSQL. En Render: vinculá la base Postgres (variable DATABASE_URL) " +
+        "y eliminá ConnectionStrings__DefaultConnection si apunta a SQL Server.");
 }
 
 static bool EsCadenaSqlServer(string connectionString)
