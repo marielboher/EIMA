@@ -167,20 +167,42 @@ app.Run();
 
 static string ResolverCadenaConexion(IConfiguration configuration)
 {
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+        return ConvertirDatabaseUrl(databaseUrl);
+
     var desdeConfig = configuration.GetConnectionString("DefaultConnection");
     if (!string.IsNullOrWhiteSpace(desdeConfig))
+    {
+        if (EsCadenaSqlServer(desdeConfig))
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:DefaultConnection parece ser de SQL Server. " +
+                "Eliminá esa variable en Render y usá DATABASE_URL (vinculando la Postgres) " +
+                "o una cadena Npgsql con Host=...;Port=5432;...");
+        }
+
         return desdeConfig;
+    }
 
-    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-    if (string.IsNullOrWhiteSpace(databaseUrl))
-        throw new InvalidOperationException(
-            "Configure ConnectionStrings:DefaultConnection o la variable DATABASE_URL.");
+    throw new InvalidOperationException(
+        "Configure DATABASE_URL (Render) o ConnectionStrings:DefaultConnection (PostgreSQL).");
+}
 
-    return ConvertirDatabaseUrl(databaseUrl);
+static bool EsCadenaSqlServer(string connectionString)
+{
+    var lower = connectionString.ToLowerInvariant();
+    return lower.Contains("trusted_connection")
+        || lower.Contains("integrated security")
+        || lower.Contains("initial catalog=")
+        || lower.Contains("data source=");
 }
 
 static string ConvertirDatabaseUrl(string databaseUrl)
 {
+    if (databaseUrl.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
+        databaseUrl = "postgresql://" + databaseUrl["postgres://".Length..];
+
     var uri = new Uri(databaseUrl);
     var userInfo = uri.UserInfo.Split(':', 2);
     var builder = new NpgsqlConnectionStringBuilder
