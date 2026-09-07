@@ -145,6 +145,8 @@ await using (var scope = app.Services.CreateAsyncScope())
     await db.Database.MigrateAsync();
     await RolesCatalogoSemilla.AsegurarEnBdAsync(db);
     await MateriasCatalogoSemilla.AsegurarEnBdAsync(db);
+    await EstadosInscripcionCatalogoSemilla.AsegurarEnBdAsync(db);
+    await EstadosPagoCatalogoSemilla.AsegurarEnBdAsync(db);
 }
 
 if (app.Environment.IsDevelopment())
@@ -155,6 +157,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors(CorsPolicyFrontend);
+
+var webRoot = string.IsNullOrWhiteSpace(app.Environment.WebRootPath)
+    ? Path.Combine(app.Environment.ContentRootPath, "wwwroot")
+    : app.Environment.WebRootPath;
+Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "comprobantes"));
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webRoot),
+    RequestPath = ""
+});
+
 app.UseMiddleware<RequiereHttpsParaAutenticacionMiddleware>();
 
 app.UseAuthentication();
