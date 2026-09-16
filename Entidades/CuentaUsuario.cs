@@ -14,5 +14,6 @@ public class CuentaUsuario
     public string HashContrasena { get; set; } = string.Empty;
 
     public int PersonaId { get; set; }
+    [JsonIgnore]
     public Persona Persona { get; set; } = null!;
 }

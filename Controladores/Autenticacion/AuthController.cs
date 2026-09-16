@@ -26,6 +26,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>Alta autogestionada: incluye DNI real (solo dígitos en BD); por defecto <c>alumno</c>; <c>tipoRegistro: profesor</c> para docentes.</summary>
+    [AllowAnonymous]
     [HttpPost("registro")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -39,6 +40,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>Obtiene un JWT con email y contraseña.</summary>
+    [AllowAnonymous]
     [HttpPost("login")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -94,6 +96,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>Solicita recuperación: CA01 correo inexistente; CA02 token único, un solo uso, 30 min (configurable).</summary>
+    [AllowAnonymous]
     [HttpPost("recuperar-contrasena")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -107,6 +110,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>Restablece contraseña con el token del enlace: CA03 política HU02; CA04 enlace ya usado o inválido; CA05 mensaje y ruta al login.</summary>
+    [AllowAnonymous]
     [HttpPost("restablecer-contrasena")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -119,6 +123,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>Evalúa la fortaleza de la contraseña para indicadores en tiempo real en el cliente (cuerpo POST para no exponer la clave en la URL).</summary>
+    [AllowAnonymous]
     [HttpPost("fortaleza-contrasena")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult FortalezaContrasena([FromBody] FortalezaSolicitud solicitud)

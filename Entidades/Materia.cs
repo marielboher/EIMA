@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Entidades;
 
 public class Materia
@@ -10,6 +12,7 @@ public class Materia
     public decimal PrecioPorClase { get; set; }
     public bool Activa { get; set; }
 
+    [JsonIgnore]
     public ICollection<ProfesorMateria> ProfesoresMaterias { get; set; } = new List<ProfesorMateria>();
     public ICollection<Inscripciones> Inscripciones { get; set; } = new List<Inscripciones>();
     public ICollection<Clase> Clases { get; set; } = new List<Clase>();

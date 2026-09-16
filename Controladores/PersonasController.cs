@@ -13,6 +13,8 @@ namespace Controladores;
 [Route("api/[controller]")]
 public class PersonasController : ControllerBase
 {
+    private const string RolesAdmin = RolesSistema.SuperAdmin + "," + RolesSistema.Administrativo;
+
     private readonly EimaDbContext _context;
     private readonly Microsoft.AspNetCore.Identity.IPasswordHasher<CuentaUsuario> _passwordHasher;
 
@@ -59,6 +61,7 @@ public class PersonasController : ControllerBase
     }
 
     /// <summary>Lista personas con rol, tipo de colaborador y cuenta, con filtros de rol, estado, búsqueda y paginación en el servidor de a 20 registros (HU15).</summary>
+    [Authorize(Roles = RolesAdmin)]
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? rol,
@@ -130,6 +133,7 @@ public class PersonasController : ControllerBase
         });
     }
 
+    [Authorize(Roles = RolesAdmin)]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Persona>> GetById(int id, CancellationToken ct)
     {
@@ -145,6 +149,7 @@ public class PersonasController : ControllerBase
     }
 
     /// <summary>Alterna el estado Activo de una persona (Baja/Alta lógica) con reglas especiales para colaboradores (HU14).</summary>
+    [Authorize(Roles = RolesAdmin)]
     [HttpPatch("{id:int}/cambiar-estado")]
     public async Task<IActionResult> CambiarEstado(int id, CancellationToken ct)
     {
@@ -195,6 +200,7 @@ public class PersonasController : ControllerBase
     }
 
     /// <summary>Crea una nueva persona con validaciones de campos obligatorios, formatos y asignación dinámica de rol (HU08, HU09, HU10, HU11).</summary>
+    [Authorize(Roles = RolesAdmin)]
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -381,6 +387,7 @@ public class PersonasController : ControllerBase
     }
 
     /// <summary>Edita los datos de una persona con re-validación de DNI único (excluyendo a la propia persona) y formatos. (HU11, HU13)</summary>
+    [Authorize(Roles = RolesAdmin)]
     [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using AccesoDatos;
 using Controladores;
@@ -7,6 +8,7 @@ using Controladores.Opciones;
 using Eima.API.Middleware;
 using Entidades;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -57,6 +59,8 @@ var nombreCookieJwt = string.IsNullOrWhiteSpace(jwtConfig.NombreCookieAccessToke
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // Evita remapear claims (p. ej. role → URI corta) y romper [Authorize(Roles = ...)].
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -66,7 +70,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer = jwtConfig.Emisor,
             ValidAudience = jwtConfig.Audiencia,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.ClaveFirma)),
-            ClockSkew = TimeSpan.FromMinutes(1)
+            ClockSkew = TimeSpan.FromMinutes(1),
+            RoleClaimType = ClaimTypes.Role,
+            NameClaimType = ClaimTypes.NameIdentifier
         };
         options.Events = new JwtBearerEvents
         {
@@ -82,7 +88,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(PersonasController).Assembly)

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Entidades;
 
 public class Clase
@@ -15,6 +17,7 @@ public class Clase
     public int CapacidadMaxima { get; set; }
 
     public Materia Materia { get; set; } = null!;
+    [JsonIgnore]
     public Persona Docente { get; set; } = null!;
     public Aula Aula { get; set; } = null!;
     public ICollection<Asistencia> Asistencias { get; set; } = new List<Asistencia>();

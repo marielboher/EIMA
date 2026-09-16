@@ -1,4 +1,6 @@
 using AccesoDatos;
+using Entidades;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,6 +8,7 @@ namespace Controladores;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = RolesSistema.SuperAdmin + "," + RolesSistema.Administrativo)]
 public class RolesController : ControllerBase
 {
     private readonly EimaDbContext _context;

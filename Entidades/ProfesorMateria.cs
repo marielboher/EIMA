@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Entidades;
 
 public class ProfesorMateria
@@ -15,6 +17,7 @@ public class ProfesorMateria
 
     public double? CantHoras { get; set; }
 
+    [JsonIgnore]
     public Persona Docente { get; set; } = null!;
     public Materia Materia { get; set; } = null!;
 }
