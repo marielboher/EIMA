@@ -8,10 +8,11 @@ public class Inscripciones
     public DateTime FechaInscripcion { get; set; }
     public int ClasesTotales { get; set; }
     public int ClasesTomadas { get; set; }
-    public string Estado { get; set; } = string.Empty;
+    public int EstadoId { get; set; }
     public decimal MontoPagado { get; set; }
 
     public Persona Persona { get; set; } = null!;
     public Materia Materia { get; set; } = null!;
+    public EstadoInscripcion Estado { get; set; } = null!;
     public ICollection<Pago> Pagos { get; set; } = new List<Pago>();
 }

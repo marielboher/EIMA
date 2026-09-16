@@ -19,7 +19,7 @@ public class MateriasController : ControllerBase
         _context = context;
     }
 
-    /// <summary>Materias agrupadas por <see cref="Materia.Area"/> para el formulario de contacto (público).</summary>
+    /// <summary>Materias agrupadas por área para el formulario de contacto (público). Solo activas.</summary>
     [AllowAnonymous]
     [HttpGet("catalogo-por-area")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -28,189 +28,247 @@ public class MateriasController : ControllerBase
         var materias = await _context.Materias
             .AsNoTracking()
             .Where(m => m.Activa && m.Area != null && m.Area != "")
+            .OrderBy(m => m.Area)
+            .ThenBy(m => m.Nombre)
             .Select(m => new { m.Id, m.Nombre, Area = m.Area! })
             .ToListAsync(ct);
 
-        var porArea = materias
+        // Orden preferido del catálogo semilla; el resto de áreas al final.
+        var ordenAreas = MateriasCatalogoSemilla.Filas
+            .Select((f, i) => (f.Area, i))
+            .ToDictionary(x => x.Area, x => x.i, StringComparer.OrdinalIgnoreCase);
+
+        var resultado = materias
             .GroupBy(m => m.Area)
-            .ToDictionary(
-                g => g.Key,
-                g => g.OrderBy(m => m.Nombre)
+            .OrderBy(g => ordenAreas.TryGetValue(g.Key, out var idx) ? idx : int.MaxValue)
+            .ThenBy(g => g.Key)
+            .Select(g => new MateriaCatalogoAreaDto(
+                g.Key,
+                g.OrderBy(m => m.Nombre)
                     .Select(m => new MateriaCatalogoItemDto(m.Id, m.Nombre))
-                    .ToList());
-
-        var resultado = new List<MateriaCatalogoAreaDto>();
-        var areasVistas = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var (area, _) in MateriasCatalogoSemilla.Filas)
-        {
-            if (!porArea.TryGetValue(area, out var items) || items.Count == 0)
-                continue;
-            resultado.Add(new MateriaCatalogoAreaDto(area, items));
-            areasVistas.Add(area);
-        }
-
-        foreach (var area in porArea.Keys.OrderBy(a => a, StringComparer.OrdinalIgnoreCase))
-        {
-            if (areasVistas.Contains(area))
-                continue;
-            resultado.Add(new MateriaCatalogoAreaDto(area, porArea[area]));
-        }
+                    .ToList()))
+            .ToList();
 
         return Ok(resultado);
     }
 
-    /// <summary>Listado liviano de materias (ABM y asignación a profesores).</summary>
+    /// <summary>Listado de materias con filtros (admin / combos).</summary>
+    [Authorize]
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<MateriaListadoDto>>> GetAll(
-        [FromQuery] bool? soloActivas,
-        CancellationToken ct)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? buscar,
+        [FromQuery] string? area,
+        [FromQuery] string? estado,
+        [FromQuery] int? pagina,
+        [FromQuery] int? limite,
+        CancellationToken ct = default)
     {
-        var query = _context.Materias.AsNoTracking().AsQueryable();
-        if (soloActivas == true)
-            query = query.Where(m => m.Activa);
+        IQueryable<Materia> query = _context.Materias.AsNoTracking();
 
-        var list = await query
-            .OrderBy(m => m.Area)
-            .ThenBy(m => m.Nombre)
-            .Select(m => new MateriaListadoDto(
-                m.Id,
-                m.Nombre,
-                m.Area,
-                m.Descripcion,
-                m.DuracionHoras,
-                m.PrecioPorClase,
-                m.Activa))
+        if (!string.IsNullOrWhiteSpace(buscar))
+        {
+            var term = buscar.Trim().ToLowerInvariant();
+            query = query.Where(m =>
+                m.Nombre.ToLower().Contains(term) ||
+                (m.Area != null && m.Area.ToLower().Contains(term)) ||
+                (m.Descripcion != null && m.Descripcion.ToLower().Contains(term)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(area) && !area.Equals("todas", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(m => m.Area == area.Trim());
+
+        if (!string.IsNullOrWhiteSpace(estado) && !estado.Equals("todos", StringComparison.OrdinalIgnoreCase))
+        {
+            var activa = estado.Trim().Equals("activo", StringComparison.OrdinalIgnoreCase)
+                         || estado.Trim().Equals("activa", StringComparison.OrdinalIgnoreCase);
+            query = query.Where(m => m.Activa == activa);
+        }
+
+        query = query.OrderBy(m => m.Area).ThenBy(m => m.Nombre);
+
+        // Sin paginación: respuesta plana (combos / listados simples)
+        if (pagina is null && limite is null)
+        {
+            var todas = await query
+                .Select(m => new MateriaListadoDto
+                {
+                    Id = m.Id,
+                    Nombre = m.Nombre,
+                    Area = m.Area,
+                    Descripcion = m.Descripcion,
+                    DuracionHoras = m.DuracionHoras,
+                    PrecioPorClase = m.PrecioPorClase,
+                    Activa = m.Activa
+                })
+                .ToListAsync(ct);
+            return Ok(todas);
+        }
+
+        var lim = limite is null or < 1 ? 10 : Math.Min(limite.Value, 100);
+        var pag = pagina is null or < 1 ? 1 : pagina.Value;
+
+        var totalRegistros = await query.CountAsync(ct);
+        var paginasTotales = (int)Math.Ceiling(totalRegistros / (double)lim);
+        if (paginasTotales < 1) paginasTotales = 1;
+        if (pag > paginasTotales) pag = paginasTotales;
+
+        var datos = await query
+            .Skip((pag - 1) * lim)
+            .Take(lim)
+            .Select(m => new MateriaListadoDto
+            {
+                Id = m.Id,
+                Nombre = m.Nombre,
+                Area = m.Area,
+                Descripcion = m.Descripcion,
+                DuracionHoras = m.DuracionHoras,
+                PrecioPorClase = m.PrecioPorClase,
+                Activa = m.Activa
+            })
             .ToListAsync(ct);
 
-        return Ok(list);
+        return Ok(new
+        {
+            datos,
+            paginaActual = pag,
+            limite = lim,
+            totalRegistros,
+            paginasTotales
+        });
     }
 
+    [Authorize]
     [HttpGet("{id:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MateriaListadoDto>> GetById(int id, CancellationToken ct)
+    public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
         var materia = await _context.Materias
             .AsNoTracking()
             .Where(m => m.Id == id)
-            .Select(m => new MateriaListadoDto(
-                m.Id,
-                m.Nombre,
-                m.Area,
-                m.Descripcion,
-                m.DuracionHoras,
-                m.PrecioPorClase,
-                m.Activa))
+            .Select(m => new MateriaListadoDto
+            {
+                Id = m.Id,
+                Nombre = m.Nombre,
+                Area = m.Area,
+                Descripcion = m.Descripcion,
+                DuracionHoras = m.DuracionHoras,
+                PrecioPorClase = m.PrecioPorClase,
+                Activa = m.Activa
+            })
             .FirstOrDefaultAsync(ct);
 
-        return materia == null ? NotFound() : Ok(materia);
+        return materia == null
+            ? NotFound(new { mensaje = "No se encontró la materia solicitada." })
+            : Ok(materia);
     }
 
+    [Authorize]
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<MateriaListadoDto>> Crear([FromBody] GuardarMateriaDto dto, CancellationToken ct)
+    public async Task<IActionResult> Crear([FromBody] GuardarMateriaDto dto, CancellationToken ct)
     {
-        var error = Validar(dto);
-        if (error != null)
-            return BadRequest(new { mensaje = error });
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
 
         var nombre = dto.Nombre.Trim();
-        var area = NormalizarArea(dto.Area);
+        if (string.IsNullOrWhiteSpace(nombre))
+            return BadRequest(new { mensaje = "El nombre es obligatorio." });
 
-        var duplicada = await _context.Materias.AnyAsync(
-            m => m.Nombre.ToLower() == nombre.ToLower() &&
-                 ((m.Area ?? "") == (area ?? "")),
+        var area = string.IsNullOrWhiteSpace(dto.Area) ? null : dto.Area.Trim();
+
+        var duplicada = await _context.Materias.AnyAsync(m =>
+            m.Nombre.ToLower() == nombre.ToLower() &&
+            ((m.Area == null && area == null) || (m.Area != null && area != null && m.Area.ToLower() == area.ToLower())),
             ct);
-        if (duplicada)
-            return BadRequest(new { mensaje = $"Ya existe la materia \"{nombre}\" en el área indicada." });
 
-        var materia = new Materia
+        if (duplicada)
+            return BadRequest(new { mensaje = "Ya existe una materia con ese nombre en el mismo área." });
+
+        var entidad = new Materia
         {
             Nombre = nombre,
             Area = area,
             Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim(),
-            DuracionHoras = Math.Max(0, dto.DuracionHoras),
-            PrecioPorClase = dto.PrecioPorClase < 0 ? 0 : dto.PrecioPorClase,
+            DuracionHoras = dto.DuracionHoras,
+            PrecioPorClase = dto.PrecioPorClase,
             Activa = dto.Activa
         };
 
-        _context.Materias.Add(materia);
+        _context.Materias.Add(entidad);
         await _context.SaveChangesAsync(ct);
 
-        var creado = ToDto(materia);
-        return CreatedAtAction(nameof(GetById), new { id = materia.Id }, creado);
+        var result = Map(entidad);
+        return CreatedAtAction(nameof(GetById), new { id = entidad.Id }, result);
     }
 
+    [Authorize]
     [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MateriaListadoDto>> Editar(int id, [FromBody] GuardarMateriaDto dto, CancellationToken ct)
+    public async Task<IActionResult> Editar(int id, [FromBody] GuardarMateriaDto dto, CancellationToken ct)
     {
-        var error = Validar(dto);
-        if (error != null)
-            return BadRequest(new { mensaje = error });
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
 
         var materia = await _context.Materias.FirstOrDefaultAsync(m => m.Id == id, ct);
         if (materia == null)
-            return NotFound();
+            return NotFound(new { mensaje = "No se encontró la materia solicitada." });
 
         var nombre = dto.Nombre.Trim();
-        var area = NormalizarArea(dto.Area);
+        if (string.IsNullOrWhiteSpace(nombre))
+            return BadRequest(new { mensaje = "El nombre es obligatorio." });
 
-        var duplicada = await _context.Materias.AnyAsync(
-            m => m.Id != id &&
-                 m.Nombre.ToLower() == nombre.ToLower() &&
-                 ((m.Area ?? "") == (area ?? "")),
+        var area = string.IsNullOrWhiteSpace(dto.Area) ? null : dto.Area.Trim();
+
+        var duplicada = await _context.Materias.AnyAsync(m =>
+            m.Id != id &&
+            m.Nombre.ToLower() == nombre.ToLower() &&
+            ((m.Area == null && area == null) || (m.Area != null && area != null && m.Area.ToLower() == area.ToLower())),
             ct);
+
         if (duplicada)
-            return BadRequest(new { mensaje = $"Ya existe la materia \"{nombre}\" en el área indicada." });
+            return BadRequest(new { mensaje = "Ya existe una materia con ese nombre en el mismo área." });
 
         materia.Nombre = nombre;
         materia.Area = area;
         materia.Descripcion = string.IsNullOrWhiteSpace(dto.Descripcion) ? null : dto.Descripcion.Trim();
-        materia.DuracionHoras = Math.Max(0, dto.DuracionHoras);
-        materia.PrecioPorClase = dto.PrecioPorClase < 0 ? 0 : dto.PrecioPorClase;
+        materia.DuracionHoras = dto.DuracionHoras;
+        materia.PrecioPorClase = dto.PrecioPorClase;
         materia.Activa = dto.Activa;
 
         await _context.SaveChangesAsync(ct);
-        return Ok(ToDto(materia));
+        return Ok(Map(materia));
     }
 
-    /// <summary>Baja lógica: marca la materia como inactiva.</summary>
+    /// <summary>Alterna Activa (baja/alta lógica).</summary>
+    [Authorize]
     [HttpPatch("{id:int}/cambiar-estado")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MateriaListadoDto>> CambiarEstado(int id, CancellationToken ct)
+    public async Task<IActionResult> CambiarEstado(int id, CancellationToken ct)
     {
         var materia = await _context.Materias.FirstOrDefaultAsync(m => m.Id == id, ct);
         if (materia == null)
-            return NotFound();
+            return NotFound(new { mensaje = "No se encontró la materia solicitada." });
 
         materia.Activa = !materia.Activa;
         await _context.SaveChangesAsync(ct);
-        return Ok(ToDto(materia));
+
+        return Ok(new { id = materia.Id, activa = materia.Activa });
     }
 
-    private static string? Validar(GuardarMateriaDto dto)
+    private static MateriaListadoDto Map(Materia m) => new()
     {
-        if (dto is null || string.IsNullOrWhiteSpace(dto.Nombre))
-            return "El nombre de la materia es obligatorio.";
-        if (dto.Nombre.Trim().Length > 200)
-            return "El nombre no puede superar 200 caracteres.";
-        if (!string.IsNullOrWhiteSpace(dto.Area) && dto.Area.Trim().Length > 150)
-            return "El área no puede superar 150 caracteres.";
-        if (!string.IsNullOrWhiteSpace(dto.Descripcion) && dto.Descripcion.Trim().Length > 2000)
-            return "La descripción no puede superar 2000 caracteres.";
-        return null;
-    }
-
-    private static string? NormalizarArea(string? area) =>
-        string.IsNullOrWhiteSpace(area) ? null : area.Trim();
-
-    private static MateriaListadoDto ToDto(Materia m) =>
-        new(m.Id, m.Nombre, m.Area, m.Descripcion, m.DuracionHoras, m.PrecioPorClase, m.Activa);
+        Id = m.Id,
+        Nombre = m.Nombre,
+        Area = m.Area,
+        Descripcion = m.Descripcion,
+        DuracionHoras = m.DuracionHoras,
+        PrecioPorClase = m.PrecioPorClase,
+        Activa = m.Activa
+    };
 }

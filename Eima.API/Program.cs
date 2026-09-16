@@ -9,33 +9,49 @@ using Eima.API.Middleware;
 using Entidades;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CORS: permitir al frontend (Vite) consumir la API en desarrollo.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(port))
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 const string CorsPolicyFrontend = "Frontend";
+var corsOrigens = builder.Configuration.GetSection("Cors:Origenes").Get<string[]>()
+    ?? new[]
+    {
+        "http://localhost:5173",
+        "https://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://127.0.0.1:5173"
+    };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(CorsPolicyFrontend, policy =>
         policy
-            .WithOrigins(
-                "http://localhost:5173",
-                "https://localhost:5173",
-                "http://127.0.0.1:5173",
-                "https://127.0.0.1:5173")
+            .WithOrigins(corsOrigens)
             .AllowAnyHeader()
             .AllowAnyMethod()
-            // Necesario si se usan cookies HttpOnly (JWT en cookie) o credenciales.
             .AllowCredentials());
 });
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddDbContext<EimaDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(ResolverCadenaConexion(builder.Configuration)));
 
 builder.Services.Configure<JwtOpciones>(builder.Configuration.GetSection(JwtOpciones.Seccion));
 builder.Services.Configure<RecuperacionContrasenaOpciones>(
@@ -132,26 +148,87 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<EimaDbContext>();
+    await db.Database.MigrateAsync();
+    await RolesCatalogoSemilla.AsegurarEnBdAsync(db);
     await MateriasCatalogoSemilla.AsegurarEnBdAsync(db);
+    await EstadosInscripcionCatalogoSemilla.AsegurarEnBdAsync(db);
+    await EstadosPagoCatalogoSemilla.AsegurarEnBdAsync(db);
 }
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
-
 app.UseCors(CorsPolicyFrontend);
+
+var webRoot = string.IsNullOrWhiteSpace(app.Environment.WebRootPath)
+    ? Path.Combine(app.Environment.ContentRootPath, "wwwroot")
+    : app.Environment.WebRootPath;
+Directory.CreateDirectory(Path.Combine(webRoot, "uploads", "comprobantes"));
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(webRoot),
+    RequestPath = ""
+});
+
 app.UseMiddleware<RequiereHttpsParaAutenticacionMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
 app.MapControllers();
 
 app.Run();
+
+static string ResolverCadenaConexion(IConfiguration configuration)
+{
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL")
+        ?? configuration["DATABASE_URL"];
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+        return ConvertirDatabaseUrl(databaseUrl);
+
+    var desdeConfig = configuration.GetConnectionString("DefaultConnection");
+    if (!string.IsNullOrWhiteSpace(desdeConfig) && !EsCadenaSqlServer(desdeConfig))
+        return desdeConfig;
+
+    throw new InvalidOperationException(
+        "No hay conexión PostgreSQL. En Render: vinculá la base Postgres (variable DATABASE_URL) " +
+        "y eliminá ConnectionStrings__DefaultConnection si apunta a SQL Server.");
+}
+
+static bool EsCadenaSqlServer(string connectionString)
+{
+    var lower = connectionString.ToLowerInvariant();
+    return lower.Contains("trusted_connection")
+        || lower.Contains("integrated security")
+        || lower.Contains("initial catalog=")
+        || lower.Contains("data source=");
+}
+
+static string ConvertirDatabaseUrl(string databaseUrl)
+{
+    if (databaseUrl.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
+        databaseUrl = "postgresql://" + databaseUrl["postgres://".Length..];
+
+    var uri = new Uri(databaseUrl);
+    var userInfo = uri.UserInfo.Split(':', 2);
+    var builder = new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.Port > 0 ? uri.Port : 5432,
+        Database = uri.AbsolutePath.TrimStart('/'),
+        Username = Uri.UnescapeDataString(userInfo[0]),
+        Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty,
+        SslMode = SslMode.Require
+    };
+    return builder.ConnectionString;
+}

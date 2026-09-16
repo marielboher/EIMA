@@ -20,6 +20,8 @@ public class EimaDbContext : DbContext
     public DbSet<HorarioAula> HorariosAula => Set<HorarioAula>();
     public DbSet<Inscripciones> Inscripciones => Set<Inscripciones>();
     public DbSet<Pago> Pagos => Set<Pago>();
+    public DbSet<EstadoInscripcion> EstadosInscripcion => Set<EstadoInscripcion>();
+    public DbSet<EstadoPago> EstadosPago => Set<EstadoPago>();
     public DbSet<Clase> Clases => Set<Clase>();
     public DbSet<Asistencia> Asistencias => Set<Asistencia>();
     public DbSet<Consulta> Consultas => Set<Consulta>();
@@ -152,10 +154,25 @@ public class EimaDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<EstadoInscripcion>(entity =>
+        {
+            entity.ToTable("EstadosInscripcion");
+            entity.Property(e => e.Nombre).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Descripcion).HasMaxLength(500);
+            entity.HasIndex(e => e.Nombre).IsUnique();
+        });
+
+        modelBuilder.Entity<EstadoPago>(entity =>
+        {
+            entity.ToTable("EstadosPago");
+            entity.Property(e => e.Nombre).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Descripcion).HasMaxLength(500);
+            entity.HasIndex(e => e.Nombre).IsUnique();
+        });
+
         modelBuilder.Entity<Inscripciones>(entity =>
         {
             entity.ToTable("InscripcionesMateria");
-            entity.Property(e => e.Estado).HasMaxLength(50).IsRequired();
             entity.Property(e => e.MontoPagado).HasPrecision(18, 2);
             entity.HasOne(e => e.Persona)
                 .WithMany(a => a.Inscripciones)
@@ -165,6 +182,10 @@ public class EimaDbContext : DbContext
                 .WithMany(m => m.Inscripciones)
                 .HasForeignKey(e => e.MateriaId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Estado)
+                .WithMany(s => s.Inscripciones)
+                .HasForeignKey(e => e.EstadoId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Pago>(entity =>
@@ -172,8 +193,7 @@ public class EimaDbContext : DbContext
             entity.ToTable("Pagos");
             entity.Property(e => e.Monto).HasPrecision(18, 2);
             entity.Property(e => e.MetodoPago).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.Estado).HasMaxLength(50).IsRequired();
-            entity.Property(e => e.Comprobante).HasMaxLength(200);
+            entity.Property(e => e.Comprobante).HasMaxLength(500);
             entity.Property(e => e.Observaciones).HasMaxLength(1000);
             entity.HasOne(e => e.Persona)
                 .WithMany(a => a.Pagos)
@@ -182,6 +202,10 @@ public class EimaDbContext : DbContext
             entity.HasOne(e => e.Inscripcion)
                 .WithMany(i => i.Pagos)
                 .HasForeignKey(e => e.InscripcionMateriaId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Estado)
+                .WithMany(s => s.Pagos)
+                .HasForeignKey(e => e.EstadoId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

@@ -8,10 +8,11 @@ public class Pago
     public DateTime FechaPago { get; set; }
     public decimal Monto { get; set; }
     public string MetodoPago { get; set; } = string.Empty;
-    public string Estado { get; set; } = string.Empty;
+    public int EstadoId { get; set; }
     public string? Comprobante { get; set; }
     public string? Observaciones { get; set; }
 
     public Persona Persona { get; set; } = null!;
     public Inscripciones Inscripcion { get; set; } = null!;
+    public EstadoPago Estado { get; set; } = null!;
 }

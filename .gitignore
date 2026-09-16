@@ -77,3 +77,7 @@ Thumbs.db
 global.json
 appsettings.json
 appsettings.*.json
+
+## Comprobantes subidos (HU20)
+Eima.API/wwwroot/uploads/comprobantes/*
+!Eima.API/wwwroot/uploads/comprobantes/.gitkeep
