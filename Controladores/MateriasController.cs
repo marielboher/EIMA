@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using AccesoDatos;
 using Entidades;
 using Microsoft.AspNetCore.Authorization;
@@ -179,13 +181,13 @@ public class MateriasController : ControllerBase
 
         var area = string.IsNullOrWhiteSpace(dto.Area) ? null : dto.Area.Trim();
 
-        var duplicada = await _context.Materias.AnyAsync(m =>
-            m.Nombre.ToLower() == nombre.ToLower() &&
-            ((m.Area == null && area == null) || (m.Area != null && area != null && m.Area.ToLower() == area.ToLower())),
-            ct);
-
-        if (duplicada)
-            return BadRequest(new { mensaje = "Ya existe una materia con ese nombre en el mismo área." });
+        if (await ExisteNombreDuplicadoAsync(nombre, excluirId: null, ct))
+        {
+            return BadRequest(new
+            {
+                mensaje = "Ya existe una materia con ese nombre (sin distinguir mayúsculas, minúsculas ni acentos)."
+            });
+        }
 
         var entidad = new Materia
         {
@@ -224,14 +226,13 @@ public class MateriasController : ControllerBase
 
         var area = string.IsNullOrWhiteSpace(dto.Area) ? null : dto.Area.Trim();
 
-        var duplicada = await _context.Materias.AnyAsync(m =>
-            m.Id != id &&
-            m.Nombre.ToLower() == nombre.ToLower() &&
-            ((m.Area == null && area == null) || (m.Area != null && area != null && m.Area.ToLower() == area.ToLower())),
-            ct);
-
-        if (duplicada)
-            return BadRequest(new { mensaje = "Ya existe una materia con ese nombre en el mismo área." });
+        if (await ExisteNombreDuplicadoAsync(nombre, excluirId: id, ct))
+        {
+            return BadRequest(new
+            {
+                mensaje = "Ya existe una materia con ese nombre (sin distinguir mayúsculas, minúsculas ni acentos)."
+            });
+        }
 
         materia.Nombre = nombre;
         materia.Area = area;
@@ -259,6 +260,47 @@ public class MateriasController : ControllerBase
         await _context.SaveChangesAsync(ct);
 
         return Ok(new { id = materia.Id, activa = materia.Activa });
+    }
+
+    /// <summary>
+    /// Compara nombres ignorando mayúsculas/minúsculas y acentos
+    /// (p. ej. "Geometría" ≡ "geometria").
+    /// </summary>
+    private async Task<bool> ExisteNombreDuplicadoAsync(string nombre, int? excluirId, CancellationToken ct)
+    {
+        var nombreNorm = NormalizarParaComparacion(nombre);
+        var nombres = await _context.Materias
+            .AsNoTracking()
+            .Where(m => excluirId == null || m.Id != excluirId.Value)
+            .Select(m => m.Nombre)
+            .ToListAsync(ct);
+
+        return nombres.Any(n => NormalizarParaComparacion(n) == nombreNorm);
+    }
+
+    /// <summary>Minúsculas + sin diacríticos (á→a, é→e); conserva ñ.</summary>
+    private static string NormalizarParaComparacion(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+            return string.Empty;
+
+        // Preservar ñ (no es un acento: "año" ≠ "ano").
+        const char marcadorEne = '\u0001';
+        var preparado = valor.Trim()
+            .ToLowerInvariant()
+            .Replace('ñ', marcadorEne);
+
+        var formD = preparado.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(formD.Length);
+        foreach (var c in formD)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+                sb.Append(c);
+        }
+
+        return sb.ToString()
+            .Normalize(NormalizationForm.FormC)
+            .Replace(marcadorEne, 'ñ');
     }
 
     private static MateriaListadoDto Map(Materia m) => new()
