@@ -24,14 +24,7 @@ if (!string.IsNullOrWhiteSpace(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 const string CorsPolicyFrontend = "Frontend";
-var corsOrigens = builder.Configuration.GetSection("Cors:Origenes").Get<string[]>()
-    ?? new[]
-    {
-        "http://localhost:5173",
-        "https://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://127.0.0.1:5173"
-    };
+var corsOrigens = ResolverOrigenesCors(builder.Configuration);
 
 builder.Services.AddCors(options =>
 {
@@ -188,6 +181,57 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymo
 app.MapControllers();
 
 app.Run();
+
+/// <summary>
+/// Acepta array (Cors__Origenes__0, __1…) o un solo string separado por comas/punto y coma:
+/// Cors__Origenes=https://app.vercel.app,http://localhost:5173
+/// </summary>
+static string[] ResolverOrigenesCors(IConfiguration configuration)
+{
+    var defaults = new[]
+    {
+        "http://localhost:5173",
+        "https://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://127.0.0.1:5173"
+    };
+
+    var comoArray = configuration.GetSection("Cors:Origenes").Get<string[]>();
+    if (comoArray is { Length: > 0 })
+    {
+        var desdeArray = comoArray
+            .SelectMany(PartirOrigenes)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (desdeArray.Length > 0)
+            return desdeArray;
+    }
+
+    var comoTexto = configuration["Cors:Origenes"];
+    if (!string.IsNullOrWhiteSpace(comoTexto))
+    {
+        var desdeTexto = PartirOrigenes(comoTexto)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (desdeTexto.Length > 0)
+            return desdeTexto;
+    }
+
+    return defaults;
+}
+
+static IEnumerable<string> PartirOrigenes(string? valor)
+{
+    if (string.IsNullOrWhiteSpace(valor))
+        yield break;
+
+    foreach (var parte in valor.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        var origen = parte.Trim().TrimEnd('/');
+        if (!string.IsNullOrWhiteSpace(origen))
+            yield return origen;
+    }
+}
 
 static string ResolverCadenaConexion(IConfiguration configuration)
 {
