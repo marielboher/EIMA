@@ -24,6 +24,21 @@ public class PersonasController : ControllerBase
         _passwordHasher = passwordHasher;
     }
 
+    /// <summary>
+    /// Npgsql exige UTC para columnas <c>timestamp with time zone</c>.
+    /// Fechas del front (p.ej. "2026-08-25") llegan con <see cref="DateTimeKind.Unspecified"/>.
+    /// </summary>
+    private static DateTime AsUtc(DateTime value) =>
+        value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+
+    private static DateTime? AsUtc(DateTime? value) =>
+        value is null ? null : AsUtc(value.Value);
+
     /// <summary>Datos de la persona autenticada (perfil): nombre, apellido, DNI, contacto y correo de cuenta.</summary>
     [Authorize]
     [HttpGet("mi-perfil")]
@@ -318,7 +333,7 @@ public class PersonasController : ControllerBase
                 Apellido = dto.Apellido.Trim(),
                 Dni = dniNormalizado,
                 Telefono = dto.Telefono.Trim(),
-                Direccion = dto.Direccion.Trim(),
+                Direccion = (dto.Direccion ?? string.Empty).Trim(),
                 FechaRegistro = DateTime.UtcNow,
                 RolId = rol.Id,
                 Activo = true,
@@ -330,11 +345,15 @@ public class PersonasController : ControllerBase
 
                 // Campos de Docente
                 Titulo = rolNombre == RolesSistema.Profesor ? dto.Titulo?.Trim() : null,
-                FechaIngresoDocente = rolNombre == RolesSistema.Profesor ? (dto.FechaIngresoDocente ?? DateTime.UtcNow) : null,
+                FechaIngresoDocente = rolNombre == RolesSistema.Profesor
+                    ? AsUtc(dto.FechaIngresoDocente) ?? DateTime.UtcNow
+                    : null,
 
                 // Campos de Colaborador
                 TipoColaboradorId = tipoColaboradorId,
-                FechaContratacion = rolNombre == RolesSistema.Administrativo ? (dto.FechaContratacion ?? DateTime.UtcNow) : null,
+                FechaContratacion = rolNombre == RolesSistema.Administrativo
+                    ? AsUtc(dto.FechaContratacion) ?? DateTime.UtcNow
+                    : null,
                 Salario = rolNombre == RolesSistema.Administrativo ? dto.Salario : null,
                 ActivoComoColaborador = rolNombre == RolesSistema.Administrativo ? true : null
             };
@@ -379,10 +398,14 @@ public class PersonasController : ControllerBase
 
             return CreatedAtAction(nameof(GetById), new { id = persona.Id }, persona);
         }
-        catch
+        catch (Exception ex)
         {
             await tx.RollbackAsync(ct);
-            throw;
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                mensaje = "No se pudo registrar la persona.",
+                detalle = ex.InnerException?.Message ?? ex.Message
+            });
         }
     }
 
@@ -532,7 +555,7 @@ public class PersonasController : ControllerBase
 
             // Opcionales de Docente
             persona.Titulo = dto.Titulo?.Trim();
-            persona.FechaIngresoDocente = dto.FechaIngresoDocente ?? DateTime.UtcNow;
+            persona.FechaIngresoDocente = AsUtc(dto.FechaIngresoDocente) ?? DateTime.UtcNow;
 
             // Limpiar Colaborador
             persona.FechaContratacion = null;
@@ -559,8 +582,8 @@ public class PersonasController : ControllerBase
             persona.PorcentajeDescuentoGrupo = null;
 
             // Opcionales de Colaborador
-            persona.FechaContratacion = dto.FechaContratacion ?? DateTime.UtcNow;
-            persona.FechaFinContratacion = dto.FechaFinContratacion;
+            persona.FechaContratacion = AsUtc(dto.FechaContratacion) ?? DateTime.UtcNow;
+            persona.FechaFinContratacion = AsUtc(dto.FechaFinContratacion);
             persona.Salario = dto.Salario;
             persona.ActivoComoColaborador = dto.ActivoComoColaborador ?? true;
 
