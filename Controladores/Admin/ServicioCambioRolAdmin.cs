@@ -20,6 +20,17 @@ public sealed class ServicioCambioRolAdmin
         _db = db;
     }
 
+    /// <summary>Acepta el nombre de sistema o el alias de la UI, incluido administrador / superadmin.</summary>
+    private static string NormalizarRol(string? rol) =>
+        (rol ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "alumno" => RolesSistema.Alumno,
+            "docente" or "profesor" => RolesSistema.Profesor,
+            "colaborador" or "administrativo" or "secretaria" => RolesSistema.Administrativo,
+            "admin" or "administrador" or "superadmin" or "super_admin" or "super administrador" => RolesSistema.SuperAdmin,
+            var otro => otro
+        };
+
     public async Task<(bool ok, object body, int status)> CambiarRolPorCorreoAsync(
         CambiarRolUsuarioSolicitud solicitud,
         int realizadoPorPersonaId,
@@ -33,15 +44,12 @@ public sealed class ServicioCambioRolAdmin
 
         if (string.IsNullOrWhiteSpace(solicitud.NuevoRol))
             errores.Add(new ErrorCampo(nameof(solicitud.NuevoRol), "Debe indicar el nuevo rol."));
-        else if (solicitud.NuevoRol.Trim().Equals(RolesSistema.SuperAdmin, StringComparison.OrdinalIgnoreCase))
-            errores.Add(new ErrorCampo(nameof(solicitud.NuevoRol),
-                "No se puede asignar el rol de super administrador por esta operación."));
 
         if (errores.Count > 0)
             return (false, new { errores }, StatusCodes.Status400BadRequest);
 
         var correoNorm = solicitud.Correo.Trim().ToLowerInvariant();
-        var nombreRolNorm = solicitud.NuevoRol.Trim().ToLowerInvariant();
+        var nombreRolNorm = NormalizarRol(solicitud.NuevoRol);
 
         var cuenta = await _db.CuentasUsuarios
             .Include(c => c.Persona).ThenInclude(p => p.Rol)
@@ -67,7 +75,7 @@ public sealed class ServicioCambioRolAdmin
                 errores = new[]
                 {
                     new ErrorCampo(nameof(solicitud.NuevoRol),
-                        $"No existe el rol \"{solicitud.NuevoRol.Trim()}\". Use un nombre válido del sistema (por ejemplo: profesor, alumno, secretaria).")
+                        $"No existe el rol \"{solicitud.NuevoRol.Trim()}\". Use un nombre válido del sistema (por ejemplo: profesor, alumno, administrativo, super_admin).")
                 }
             }, StatusCodes.Status400BadRequest);
         }
