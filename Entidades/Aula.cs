@@ -10,4 +10,7 @@ public class Aula
 
     public ICollection<HorarioAula> HorariosAula { get; set; } = new List<HorarioAula>();
     public ICollection<Clase> Clases { get; set; } = new List<Clase>();
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ICollection<AsignacionAula> AsignacionesAula { get; set; } = new List<AsignacionAula>();
 }

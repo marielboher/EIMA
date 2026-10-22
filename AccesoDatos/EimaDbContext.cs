@@ -18,6 +18,7 @@ public class EimaDbContext : DbContext
     public DbSet<HorarioDisponible> HorariosDisponibles => Set<HorarioDisponible>();
     public DbSet<Aula> Aulas => Set<Aula>();
     public DbSet<HorarioAula> HorariosAula => Set<HorarioAula>();
+    public DbSet<AsignacionAula> AsignacionesAula => Set<AsignacionAula>();
     public DbSet<Inscripciones> Inscripciones => Set<Inscripciones>();
     public DbSet<Pago> Pagos => Set<Pago>();
     public DbSet<EstadoInscripcion> EstadosInscripcion => Set<EstadoInscripcion>();
@@ -152,6 +153,31 @@ public class EimaDbContext : DbContext
                 .WithMany(a => a.HorariosAula)
                 .HasForeignKey(e => e.AulaId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AsignacionAula>(entity =>
+        {
+            entity.ToTable("AsignacionesAula");
+            entity.Property(e => e.Estado).HasMaxLength(20).IsRequired();
+
+            entity.HasOne(e => e.Aula)
+                .WithMany(a => a.AsignacionesAula)
+                .HasForeignKey(e => e.AulaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Materia)
+                .WithMany()
+                .HasForeignKey(e => e.MateriaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Docente)
+                .WithMany()
+                .HasForeignKey(e => e.DocenteId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => e.Estado);
+            entity.HasIndex(e => e.AulaId);
+            entity.HasIndex(e => e.FechaAsignacion);
         });
 
         modelBuilder.Entity<EstadoInscripcion>(entity =>

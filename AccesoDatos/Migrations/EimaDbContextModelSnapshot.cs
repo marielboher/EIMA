@@ -22,6 +22,58 @@ namespace AccesoDatos.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Entidades.AsignacionAula", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AulaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CupoHabilitado")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("CuposOcupados")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DocenteId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("FechaAsignacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaCierre")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FinVigencia")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MateriaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AulaId");
+
+                    b.HasIndex("DocenteId");
+
+                    b.HasIndex("Estado");
+
+                    b.HasIndex("FechaAsignacion");
+
+                    b.HasIndex("MateriaId");
+
+                    b.ToTable("AsignacionesAula", (string)null);
+                });
+
             modelBuilder.Entity("Entidades.Asistencia", b =>
                 {
                     b.Property<int>("Id")
@@ -690,6 +742,33 @@ namespace AccesoDatos.Migrations
                     b.ToTable("TokensRecuperacionContrasena", (string)null);
                 });
 
+            modelBuilder.Entity("Entidades.AsignacionAula", b =>
+                {
+                    b.HasOne("Entidades.Aula", "Aula")
+                        .WithMany("AsignacionesAula")
+                        .HasForeignKey("AulaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Entidades.Persona", "Docente")
+                        .WithMany()
+                        .HasForeignKey("DocenteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Entidades.Materia", "Materia")
+                        .WithMany()
+                        .HasForeignKey("MateriaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Aula");
+
+                    b.Navigation("Docente");
+
+                    b.Navigation("Materia");
+                });
+
             modelBuilder.Entity("Entidades.Asistencia", b =>
                 {
                     b.HasOne("Entidades.Clase", "Clase")
@@ -873,6 +952,8 @@ namespace AccesoDatos.Migrations
 
             modelBuilder.Entity("Entidades.Aula", b =>
                 {
+                    b.Navigation("AsignacionesAula");
+
                     b.Navigation("Clases");
 
                     b.Navigation("HorariosAula");
