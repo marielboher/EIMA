@@ -742,6 +742,44 @@ namespace AccesoDatos.Migrations
                     b.ToTable("TokensRecuperacionContrasena", (string)null);
                 });
 
+            modelBuilder.Entity("Entidades.VistaListadoAsignacion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("FechaActualizacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FiltrosJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("OrdenJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("PersonaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonaId", "Nombre")
+                        .IsUnique();
+
+                    b.ToTable("VistasListadoAsignaciones", (string)null);
+                });
+
             modelBuilder.Entity("Entidades.AsignacionAula", b =>
                 {
                     b.HasOne("Entidades.Aula", "Aula")
@@ -948,6 +986,17 @@ namespace AccesoDatos.Migrations
                         .IsRequired();
 
                     b.Navigation("CuentaUsuario");
+                });
+
+            modelBuilder.Entity("Entidades.VistaListadoAsignacion", b =>
+                {
+                    b.HasOne("Entidades.Persona", "Persona")
+                        .WithMany()
+                        .HasForeignKey("PersonaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Persona");
                 });
 
             modelBuilder.Entity("Entidades.Aula", b =>

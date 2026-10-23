@@ -33,6 +33,7 @@ builder.Services.AddCors(options =>
             .WithOrigins(corsOrigens)
             .AllowAnyHeader()
             .AllowAnyMethod()
+            .WithExposedHeaders("Content-Disposition")
             .AllowCredentials());
 });
 

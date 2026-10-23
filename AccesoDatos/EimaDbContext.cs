@@ -19,6 +19,7 @@ public class EimaDbContext : DbContext
     public DbSet<Aula> Aulas => Set<Aula>();
     public DbSet<HorarioAula> HorariosAula => Set<HorarioAula>();
     public DbSet<AsignacionAula> AsignacionesAula => Set<AsignacionAula>();
+    public DbSet<VistaListadoAsignacion> VistasListadoAsignaciones => Set<VistaListadoAsignacion>();
     public DbSet<Inscripciones> Inscripciones => Set<Inscripciones>();
     public DbSet<Pago> Pagos => Set<Pago>();
     public DbSet<EstadoInscripcion> EstadosInscripcion => Set<EstadoInscripcion>();
@@ -178,6 +179,21 @@ public class EimaDbContext : DbContext
             entity.HasIndex(e => e.Estado);
             entity.HasIndex(e => e.AulaId);
             entity.HasIndex(e => e.FechaAsignacion);
+        });
+
+        modelBuilder.Entity<VistaListadoAsignacion>(entity =>
+        {
+            entity.ToTable("VistasListadoAsignaciones");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Nombre).HasMaxLength(80).IsRequired();
+            entity.Property(e => e.FiltrosJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(e => e.OrdenJson).HasColumnType("jsonb").IsRequired();
+            entity.HasIndex(e => new { e.PersonaId, e.Nombre }).IsUnique();
+
+            entity.HasOne(e => e.Persona)
+                .WithMany()
+                .HasForeignKey(e => e.PersonaId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<EstadoInscripcion>(entity =>
