@@ -35,6 +35,7 @@ public class AsignacionAulaListadoDto
     public string Estado { get; set; } = string.Empty;
     public int CupoHabilitado { get; set; }
     public int CuposOcupados { get; set; }
+    public int CuposDisponibles { get; set; }
     public DateTime FechaAsignacion { get; set; }
     public DateTime FinVigencia { get; set; }
     public DateTime? FechaCierre { get; set; }

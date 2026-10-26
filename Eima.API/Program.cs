@@ -54,6 +54,9 @@ builder.Services.AddSingleton<IPasswordHasher<CuentaUsuario>, PasswordHasher<Cue
 builder.Services.AddScoped<ServicioAutenticacion>();
 builder.Services.AddScoped<ServicioRecuperacionContrasena>();
 builder.Services.AddScoped<ServicioCambioRolAdmin>();
+builder.Services.AddSingleton<IBloqueoFilaGrupo, BloqueoFilaGrupo>();
+builder.Services.AddScoped<ServicioCupoGrupo>();
+builder.Services.AddScoped<ServicioInformeAsignaciones>();
 
 var jwtConfig = builder.Configuration.GetSection(JwtOpciones.Seccion).Get<JwtOpciones>() ?? new JwtOpciones();
 if (string.IsNullOrWhiteSpace(jwtConfig.ClaveFirma) || jwtConfig.ClaveFirma.Length < 32)

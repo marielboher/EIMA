@@ -34,4 +34,6 @@ public class AsignacionAula
 
     /// <summary>Se registra una sola vez al cerrar la asignación.</summary>
     public DateTime? FechaCierre { get; set; }
+
+    public ICollection<InscripcionGrupo> InscripcionesGrupo { get; set; } = new List<InscripcionGrupo>();
 }

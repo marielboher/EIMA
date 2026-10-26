@@ -65,7 +65,7 @@ internal static class ExportadorAsignacionesAula
 {
     private static readonly string[] Encabezados =
     {
-        "ID", "Asignación", "Estado", "Docente", "Cupo", "Vigencia"
+        "ID", "Asignación", "Estado", "Docente", "Cupo", "Disponibles", "Vigencia"
     };
 
     public static byte[] ConstruirCsv(
@@ -117,7 +117,8 @@ internal static class ExportadorAsignacionesAula
                     new XElement(Ns + "col", new XAttribute("min", 3), new XAttribute("max", 3), new XAttribute("width", 12)),
                     new XElement(Ns + "col", new XAttribute("min", 4), new XAttribute("max", 4), new XAttribute("width", 30)),
                     new XElement(Ns + "col", new XAttribute("min", 5), new XAttribute("max", 5), new XAttribute("width", 10)),
-                    new XElement(Ns + "col", new XAttribute("min", 6), new XAttribute("max", 6), new XAttribute("width", 18))),
+                    new XElement(Ns + "col", new XAttribute("min", 6), new XAttribute("max", 6), new XAttribute("width", 14)),
+                    new XElement(Ns + "col", new XAttribute("min", 7), new XAttribute("max", 7), new XAttribute("width", 18))),
                 sheetData));
 
         var workbook = new XDocument(
@@ -183,6 +184,7 @@ internal static class ExportadorAsignacionesAula
         fila.Estado,
         fila.DocenteNombre,
         $"{fila.CuposOcupados} / {fila.CupoHabilitado}",
+        fila.CuposDisponibles.ToString(CultureInfo.InvariantCulture),
         ZonaHorariaArgentina.FormatearFechaHora(fila.FinVigencia)
     };
 

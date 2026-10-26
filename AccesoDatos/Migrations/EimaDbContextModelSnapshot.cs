@@ -385,6 +385,38 @@ namespace AccesoDatos.Migrations
                     b.ToTable("HorariosDisponibles", (string)null);
                 });
 
+            modelBuilder.Entity("Entidades.InscripcionGrupo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AsignacionAulaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("FechaAsignacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("FechaBaja")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("PersonaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonaId");
+
+                    b.HasIndex("AsignacionAulaId", "PersonaId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_InscripcionesGrupo_Grupo_Alumno_Activo")
+                        .HasFilter("\"FechaBaja\" IS NULL");
+
+                    b.ToTable("InscripcionesGrupo", (string)null);
+                });
+
             modelBuilder.Entity("Entidades.Inscripciones", b =>
                 {
                     b.Property<int>("Id")
@@ -622,6 +654,47 @@ namespace AccesoDatos.Migrations
                     b.HasIndex("TipoColaboradorId");
 
                     b.ToTable("Personas", (string)null);
+                });
+
+            modelBuilder.Entity("Entidades.PreferenciaInformeAsignacion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Anio")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Comparar")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("FechaActualizacion")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("MateriaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PeriodoTipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("PersonaId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MateriaId");
+
+                    b.HasIndex("PersonaId")
+                        .IsUnique();
+
+                    b.ToTable("PreferenciasInformeAsignacion", (string)null);
                 });
 
             modelBuilder.Entity("Entidades.ProfesorMateria", b =>
@@ -886,6 +959,25 @@ namespace AccesoDatos.Migrations
                     b.Navigation("Docente");
                 });
 
+            modelBuilder.Entity("Entidades.InscripcionGrupo", b =>
+                {
+                    b.HasOne("Entidades.AsignacionAula", "AsignacionAula")
+                        .WithMany("InscripcionesGrupo")
+                        .HasForeignKey("AsignacionAulaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Entidades.Persona", "Persona")
+                        .WithMany()
+                        .HasForeignKey("PersonaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AsignacionAula");
+
+                    b.Navigation("Persona");
+                });
+
             modelBuilder.Entity("Entidades.Inscripciones", b =>
                 {
                     b.HasOne("Entidades.EstadoInscripcion", "Estado")
@@ -958,6 +1050,22 @@ namespace AccesoDatos.Migrations
                     b.Navigation("TipoColaborador");
                 });
 
+            modelBuilder.Entity("Entidades.PreferenciaInformeAsignacion", b =>
+                {
+                    b.HasOne("Entidades.Materia", null)
+                        .WithMany()
+                        .HasForeignKey("MateriaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Entidades.Persona", "Persona")
+                        .WithMany()
+                        .HasForeignKey("PersonaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Persona");
+                });
+
             modelBuilder.Entity("Entidades.ProfesorMateria", b =>
                 {
                     b.HasOne("Entidades.Persona", "Docente")
@@ -997,6 +1105,11 @@ namespace AccesoDatos.Migrations
                         .IsRequired();
 
                     b.Navigation("Persona");
+                });
+
+            modelBuilder.Entity("Entidades.AsignacionAula", b =>
+                {
+                    b.Navigation("InscripcionesGrupo");
                 });
 
             modelBuilder.Entity("Entidades.Aula", b =>

@@ -18,11 +18,16 @@ public class InscripcionesMateriaController : ControllerBase
 
     private readonly EimaDbContext _context;
     private readonly IWebHostEnvironment _env;
+    private readonly ServicioCupoGrupo _cupo;
 
-    public InscripcionesMateriaController(EimaDbContext context, IWebHostEnvironment env)
+    public InscripcionesMateriaController(
+        EimaDbContext context,
+        IWebHostEnvironment env,
+        ServicioCupoGrupo cupo)
     {
         _context = context;
         _env = env;
+        _cupo = cupo;
     }
 
     /// <summary>Listado paginado con filtros (HU16).</summary>
@@ -168,6 +173,7 @@ public class InscripcionesMateriaController : ControllerBase
 
             _context.Inscripciones.Add(entidad);
             await _context.SaveChangesAsync(ct);
+            await _cupo.RecalcularPorPersonaYMateriaAsync(entidad.PersonaId, entidad.MateriaId, ct);
             await tx.CommitAsync(ct);
 
             var creada = await CargarDetalleAsync(entidad.Id, ct);
@@ -222,7 +228,12 @@ public class InscripcionesMateriaController : ControllerBase
         inscripcion.ClasesTomadas = clasesTomadas;
         inscripcion.EstadoId = estadoEntidad.Id;
 
-        await _context.SaveChangesAsync(ct);
+        await using var transaccion = await _context.Database.BeginTransactionAsync(ct);
+        if (string.Equals(estadoEntidad.Nombre, EstadosInscripcionSistema.Cancelada, StringComparison.OrdinalIgnoreCase))
+            await _cupo.DarBajaVinculosDeInscripcionAsync(inscripcion.PersonaId, inscripcion.MateriaId, ct);
+        else
+            await _cupo.RecalcularPorPersonaYMateriaAsync(inscripcion.PersonaId, inscripcion.MateriaId, ct);
+        await transaccion.CommitAsync(ct);
 
         var actualizada = await CargarDetalleAsync(id, ct);
         return Ok(MapDetalle(actualizada!));
@@ -258,7 +269,9 @@ public class InscripcionesMateriaController : ControllerBase
             .Sum(p => p.Monto);
 
         inscripcion.EstadoId = estadoCancelada.Id;
-        await _context.SaveChangesAsync(ct);
+        await using var transaccion = await _context.Database.BeginTransactionAsync(ct);
+        await _cupo.DarBajaVinculosDeInscripcionAsync(inscripcion.PersonaId, inscripcion.MateriaId, ct);
+        await transaccion.CommitAsync(ct);
 
         var actualizada = await CargarDetalleAsync(id, ct);
         return Ok(new

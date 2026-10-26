@@ -1,9 +1,8 @@
-using AccesoDatos;
+using System.Security.Claims;
 using Entidades;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Controladores;
 
@@ -12,16 +11,16 @@ namespace Controladores;
 [Authorize(Roles = RolesSistema.SuperAdmin + "," + RolesSistema.Administrativo)]
 public class InformesController : ControllerBase
 {
-    private readonly EimaDbContext _context;
+    private readonly ServicioInformeAsignaciones _informes;
 
-    public InformesController(EimaDbContext context)
+    public InformesController(ServicioInformeAsignaciones informes)
     {
-        _context = context;
+        _informes = informes;
     }
 
     /// <summary>
-    /// Indicadores del mes de asignaciones de aula (HU28): creadas, cerradas,
-    /// abiertas al cierre, SLA y TME. La ventana usa el mes calendario en hora de Argentina.
+    /// Indicadores de asignaciones de aula (HU28) con periodo, materia, comparativo (HU31/HU33)
+    /// y desglose por materia y docente (HU32).
     /// </summary>
     [HttpGet("AsignacionesAula")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -29,76 +28,82 @@ public class InformesController : ControllerBase
     public async Task<ActionResult<InformeAsignacionesAulaDto>> GetAsignacionesAula(
         [FromQuery] int? anio,
         [FromQuery] int? mes,
-        CancellationToken ct)
+        [FromQuery] string? periodo,
+        [FromQuery] int? materiaId,
+        [FromQuery] bool comparar = false,
+        CancellationToken ct = default)
     {
         var referencia = ZonaHorariaArgentina.ALocal(DateTime.UtcNow);
-        var anioFinal = anio ?? referencia.Year;
-        var mesFinal = mes ?? referencia.Month;
+        var (informe, error) = await _informes.GenerarAsync(
+            anio ?? referencia.Year,
+            mes ?? referencia.Month,
+            string.IsNullOrWhiteSpace(periodo) ? PeriodosInformeAsignacion.Mes : periodo,
+            materiaId,
+            comparar,
+            ct);
 
-        if (mesFinal is < 1 or > 12)
-            return BadRequest(new { mensaje = "El mes debe estar entre 1 y 12." });
+        return error is null ? Ok(informe) : BadRequest(new { mensaje = error });
+    }
 
-        if (anioFinal is < 2000 or > 2100)
-            return BadRequest(new { mensaje = "El año debe estar entre 2000 y 2100." });
+    /// <summary>PDF alineado al informe en pantalla (HU34).</summary>
+    [HttpGet("AsignacionesAula/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> DescargarPdf(
+        [FromQuery] int? anio,
+        [FromQuery] int? mes,
+        [FromQuery] string? periodo,
+        [FromQuery] int? materiaId,
+        [FromQuery] bool comparar = false,
+        CancellationToken ct = default)
+    {
+        var referencia = ZonaHorariaArgentina.ALocal(DateTime.UtcNow);
+        var (informe, error) = await _informes.GenerarAsync(
+            anio ?? referencia.Year,
+            mes ?? referencia.Month,
+            string.IsNullOrWhiteSpace(periodo) ? PeriodosInformeAsignacion.Mes : periodo,
+            materiaId,
+            comparar,
+            ct);
 
-        var inicioLocal = new DateTime(anioFinal, mesFinal, 1, 0, 0, 0, DateTimeKind.Unspecified);
-        var inicioUtc = ZonaHorariaArgentina.AUtc(inicioLocal);
-        var finUtc = ZonaHorariaArgentina.AUtc(inicioLocal.AddMonths(1));
+        if (error is not null)
+            return BadRequest(new { mensaje = error });
 
-        var creadas = await _context.AsignacionesAula
-            .AsNoTracking()
-            .CountAsync(a => a.FechaAsignacion >= inicioUtc && a.FechaAsignacion < finUtc, ct);
+        var pdf = GeneradorPdfInformeAsignaciones.Generar(informe!);
+        var nombre = $"informe-asignaciones-{informe!.Anio:D4}-{informe.Mes:D2}.pdf";
+        return File(pdf, "application/pdf", nombre);
+    }
 
-        var cerradasDelMes = await _context.AsignacionesAula
-            .AsNoTracking()
-            .Where(a => a.FechaCierre != null && a.FechaCierre >= inicioUtc && a.FechaCierre < finUtc)
-            .Select(a => new
-            {
-                a.FechaAsignacion,
-                a.FechaCierre,
-                a.FinVigencia
-            })
-            .ToListAsync(ct);
+    /// <summary>Última elección de periodo y materia del usuario (HU33).</summary>
+    [HttpGet("AsignacionesAula/preferencias")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<PreferenciaInformeDto>> GetPreferencia(CancellationToken ct)
+    {
+        if (!TryObtenerPersonaId(out var personaId))
+            return Unauthorized(new { mensaje = "No se pudo identificar al usuario." });
 
-        var cerradas = cerradasDelMes.Count;
-        var cerradasEnVigencia = cerradasDelMes.Count(a => a.FechaCierre!.Value <= a.FinVigencia);
+        return Ok(await _informes.ObtenerPreferenciaAsync(personaId, ct));
+    }
 
-        var abiertasAlCierre = await _context.AsignacionesAula
-            .AsNoTracking()
-            .CountAsync(a =>
-                a.FechaAsignacion < finUtc &&
-                (a.FechaCierre == null || a.FechaCierre >= finUtc), ct);
+    [HttpPut("AsignacionesAula/preferencias")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<PreferenciaInformeDto>> GuardarPreferencia(
+        [FromBody] GuardarPreferenciaInformeDto dto,
+        CancellationToken ct)
+    {
+        if (!TryObtenerPersonaId(out var personaId))
+            return Unauthorized(new { mensaje = "No se pudo identificar al usuario." });
 
-        var sla = cerradas > 0
-            ? Math.Round(cerradasEnVigencia * 100.0 / cerradas, 2)
-            : (double?)null;
+        var (preferencia, error) = await _informes.GuardarPreferenciaAsync(personaId, dto, ct);
+        return error is null ? Ok(preferencia) : BadRequest(new { mensaje = error });
+    }
 
-        var tme = cerradas > 0
-            ? Math.Round(cerradasDelMes.Average(a => (a.FechaCierre!.Value - a.FechaAsignacion).TotalDays), 2)
-            : (double?)null;
-
-        var informe = new InformeAsignacionesAulaDto
-        {
-            Anio = anioFinal,
-            Mes = mesFinal,
-            Periodo = $"{anioFinal:D4}-{mesFinal:D2}",
-            FechaActualizacion = DateTime.UtcNow,
-            Creadas = creadas,
-            Cerradas = cerradas,
-            AbiertasAlCierre = abiertasAlCierre,
-            CerradasEnVigencia = cerradasEnVigencia,
-            SlaPorcentaje = sla,
-            TmeDias = tme,
-            Definiciones = new DefinicionesInformeDto
-            {
-                Creadas = "Cantidad de asignaciones de aula con fecha de asignación dentro del mes seleccionado (hora de Argentina).",
-                Cerradas = "Cantidad de asignaciones de aula con fecha de cierre dentro del mes seleccionado (hora de Argentina).",
-                AbiertasAlCierre = "Asignaciones creadas hasta el fin del mes que seguían abiertas al cierre del mes (fecha de cierre nula o posterior).",
-                Sla = "(Cerradas dentro de vigencia / cerradas totales) × 100. Dentro de vigencia: fecha de cierre ≤ fin de vigencia.",
-                Tme = "Promedio de (fecha de cierre − fecha de asignación) en días para las asignaciones cerradas del mes."
-            }
-        };
-
-        return Ok(informe);
+    private bool TryObtenerPersonaId(out int personaId)
+    {
+        var id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return int.TryParse(id, out personaId);
     }
 }

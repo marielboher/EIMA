@@ -14,7 +14,7 @@ namespace Controladores;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = RolesSistema.SuperAdmin + "," + RolesSistema.Administrativo)]
-public class AsignacionesAulaController : ControllerBase
+public partial class AsignacionesAulaController : ControllerBase
 {
     private static readonly JsonSerializerOptions JsonVistas = new()
     {
@@ -23,10 +23,12 @@ public class AsignacionesAulaController : ControllerBase
     };
 
     private readonly EimaDbContext _context;
+    private readonly ServicioCupoGrupo _cupo;
 
-    public AsignacionesAulaController(EimaDbContext context)
+    public AsignacionesAulaController(EimaDbContext context, ServicioCupoGrupo cupo)
     {
         _context = context;
+        _cupo = cupo;
     }
 
     /// <summary>
@@ -651,6 +653,9 @@ public class AsignacionesAulaController : ControllerBase
             Estado = a.Estado,
             CupoHabilitado = a.CupoHabilitado,
             CuposOcupados = a.CuposOcupados,
+            CuposDisponibles = a.CupoHabilitado > a.CuposOcupados
+                ? a.CupoHabilitado - a.CuposOcupados
+                : 0,
             FechaAsignacion = a.FechaAsignacion,
             FinVigencia = a.FinVigencia,
             FechaCierre = a.FechaCierre

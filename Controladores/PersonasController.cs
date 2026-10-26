@@ -17,11 +17,16 @@ public class PersonasController : ControllerBase
 
     private readonly EimaDbContext _context;
     private readonly Microsoft.AspNetCore.Identity.IPasswordHasher<CuentaUsuario> _passwordHasher;
+    private readonly ServicioCupoGrupo _cupo;
 
-    public PersonasController(EimaDbContext context, Microsoft.AspNetCore.Identity.IPasswordHasher<CuentaUsuario> passwordHasher)
+    public PersonasController(
+        EimaDbContext context,
+        Microsoft.AspNetCore.Identity.IPasswordHasher<CuentaUsuario> passwordHasher,
+        ServicioCupoGrupo cupo)
     {
         _context = context;
         _passwordHasher = passwordHasher;
+        _cupo = cupo;
     }
 
     /// <summary>
@@ -203,7 +208,9 @@ public class PersonasController : ControllerBase
             }
         }
 
-        await _context.SaveChangesAsync(ct);
+        await using var transaccion = await _context.Database.BeginTransactionAsync(ct);
+        await _cupo.RecalcularPorPersonaAsync(persona.Id, ct);
+        await transaccion.CommitAsync(ct);
         return Ok(new 
         { 
             id = persona.Id, 

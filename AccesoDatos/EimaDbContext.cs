@@ -5,9 +5,13 @@ namespace AccesoDatos;
 
 public class EimaDbContext : DbContext
 {
+    private readonly bool _sqlite;
+
     public EimaDbContext(DbContextOptions<EimaDbContext> options)
         : base(options)
     {
+        _sqlite = options.Extensions.Any(extension =>
+            extension.GetType().Name.Contains("Sqlite", StringComparison.OrdinalIgnoreCase));
     }
 
     public DbSet<Persona> Personas => Set<Persona>();
@@ -19,6 +23,8 @@ public class EimaDbContext : DbContext
     public DbSet<Aula> Aulas => Set<Aula>();
     public DbSet<HorarioAula> HorariosAula => Set<HorarioAula>();
     public DbSet<AsignacionAula> AsignacionesAula => Set<AsignacionAula>();
+    public DbSet<InscripcionGrupo> InscripcionesGrupo => Set<InscripcionGrupo>();
+    public DbSet<PreferenciaInformeAsignacion> PreferenciasInformeAsignacion => Set<PreferenciaInformeAsignacion>();
     public DbSet<VistaListadoAsignacion> VistasListadoAsignaciones => Set<VistaListadoAsignacion>();
     public DbSet<Inscripciones> Inscripciones => Set<Inscripciones>();
     public DbSet<Pago> Pagos => Set<Pago>();
@@ -181,6 +187,45 @@ public class EimaDbContext : DbContext
             entity.HasIndex(e => e.FechaAsignacion);
         });
 
+        modelBuilder.Entity<InscripcionGrupo>(entity =>
+        {
+            entity.ToTable("InscripcionesGrupo");
+
+            entity.HasOne(e => e.AsignacionAula)
+                .WithMany(a => a.InscripcionesGrupo)
+                .HasForeignKey(e => e.AsignacionAulaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Persona)
+                .WithMany()
+                .HasForeignKey(e => e.PersonaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(e => new { e.AsignacionAulaId, e.PersonaId })
+                .IsUnique()
+                .HasFilter("\"FechaBaja\" IS NULL")
+                .HasDatabaseName("IX_InscripcionesGrupo_Grupo_Alumno_Activo");
+
+            entity.HasIndex(e => e.PersonaId);
+        });
+
+        modelBuilder.Entity<PreferenciaInformeAsignacion>(entity =>
+        {
+            entity.ToTable("PreferenciasInformeAsignacion");
+            entity.Property(e => e.PeriodoTipo).HasMaxLength(20).IsRequired();
+            entity.HasIndex(e => e.PersonaId).IsUnique();
+
+            entity.HasOne(e => e.Persona)
+                .WithMany()
+                .HasForeignKey(e => e.PersonaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Materia>()
+                .WithMany()
+                .HasForeignKey(e => e.MateriaId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
         modelBuilder.Entity<VistaListadoAsignacion>(entity =>
         {
             entity.ToTable("VistasListadoAsignaciones");
@@ -296,5 +341,11 @@ public class EimaDbContext : DbContext
             entity.Property(e => e.Asunto).HasMaxLength(200).IsRequired();
             entity.Property(e => e.Mensaje).HasMaxLength(4000).IsRequired();
         });
+
+        if (_sqlite)
+        {
+            modelBuilder.Entity<VistaListadoAsignacion>().Property(e => e.FiltrosJson).HasColumnType("TEXT");
+            modelBuilder.Entity<VistaListadoAsignacion>().Property(e => e.OrdenJson).HasColumnType("TEXT");
+        }
     }
 }
