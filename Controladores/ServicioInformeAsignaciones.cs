@@ -95,9 +95,17 @@ public class ServicioInformeAsignaciones
 
     public async Task<PreferenciaInformeDto> ObtenerPreferenciaAsync(int personaId, CancellationToken ct)
     {
-        var guardada = await _context.PreferenciasInformeAsignacion
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.PersonaId == personaId, ct);
+        PreferenciaInformeAsignacion? guardada;
+        try
+        {
+            guardada = await _context.PreferenciasInformeAsignacion
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.PersonaId == personaId, ct);
+        }
+        catch (Exception ex) when (EsTablaInexistente(ex))
+        {
+            return PreferenciaPorDefecto();
+        }
 
         if (guardada is null)
             return PreferenciaPorDefecto();
@@ -150,34 +158,93 @@ public class ServicioInformeAsignaciones
                 return (null, "La materia indicada no existe.");
         }
 
-        var existente = await _context.PreferenciasInformeAsignacion
-            .FirstOrDefaultAsync(p => p.PersonaId == personaId, ct);
-
-        if (existente is null)
+        try
         {
-            existente = new PreferenciaInformeAsignacion { PersonaId = personaId };
-            _context.PreferenciasInformeAsignacion.Add(existente);
+            var existente = await _context.PreferenciasInformeAsignacion
+                .FirstOrDefaultAsync(p => p.PersonaId == personaId, ct);
+
+            if (existente is null)
+            {
+                existente = new PreferenciaInformeAsignacion { PersonaId = personaId };
+                _context.PreferenciasInformeAsignacion.Add(existente);
+            }
+
+            existente.PeriodoTipo = periodo;
+            existente.Anio = dto.Anio;
+            existente.Mes = dto.Mes;
+            existente.MateriaId = materiaId;
+            existente.Comparar = dto.Comparar;
+            existente.FechaActualizacion = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync(ct);
+
+            return (MapearPreferencia(existente, materiaNombre), null);
+        }
+        catch (DbUpdateException ex) when (EsViolacionUnica(ex))
+        {
+            _context.ChangeTracker.Clear();
+            var existente = await _context.PreferenciasInformeAsignacion
+                .FirstOrDefaultAsync(p => p.PersonaId == personaId, ct);
+
+            if (existente is null)
+                return (null, "No se pudo guardar la preferencia.");
+
+            existente.PeriodoTipo = periodo;
+            existente.Anio = dto.Anio;
+            existente.Mes = dto.Mes;
+            existente.MateriaId = materiaId;
+            existente.Comparar = dto.Comparar;
+            existente.FechaActualizacion = DateTime.UtcNow;
+            await _context.SaveChangesAsync(ct);
+
+            return (MapearPreferencia(existente, materiaNombre), null);
+        }
+        catch (Exception ex) when (EsTablaInexistente(ex))
+        {
+            _context.ChangeTracker.Clear();
+            return (MapearPreferencia(new PreferenciaInformeAsignacion
+            {
+                PeriodoTipo = periodo,
+                Anio = dto.Anio,
+                Mes = dto.Mes,
+                MateriaId = materiaId,
+                Comparar = dto.Comparar
+            }, materiaNombre), null);
+        }
+    }
+
+    private static PreferenciaInformeDto MapearPreferencia(
+        PreferenciaInformeAsignacion existente,
+        string? materiaNombre) => new()
+    {
+        PeriodoTipo = existente.PeriodoTipo,
+        Anio = existente.Anio,
+        Mes = existente.Mes,
+        MateriaId = existente.MateriaId,
+        MateriaNombre = materiaNombre,
+        Comparar = existente.Comparar,
+        Guardada = true
+    };
+
+    private static bool EsViolacionUnica(DbUpdateException ex) =>
+        RecorreMensaje(ex, texto =>
+            texto.Contains("23505", StringComparison.Ordinal) ||
+            texto.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase));
+
+    private static bool EsTablaInexistente(Exception ex) =>
+        RecorreMensaje(ex, texto =>
+            texto.Contains("42P01", StringComparison.Ordinal) ||
+            texto.Contains("does not exist", StringComparison.OrdinalIgnoreCase));
+
+    private static bool RecorreMensaje(Exception ex, Func<string, bool> coincide)
+    {
+        for (Exception? actual = ex; actual is not null; actual = actual.InnerException)
+        {
+            if (coincide(actual.Message))
+                return true;
         }
 
-        existente.PeriodoTipo = periodo;
-        existente.Anio = dto.Anio;
-        existente.Mes = dto.Mes;
-        existente.MateriaId = materiaId;
-        existente.Comparar = dto.Comparar;
-        existente.FechaActualizacion = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync(ct);
-
-        return (new PreferenciaInformeDto
-        {
-            PeriodoTipo = existente.PeriodoTipo,
-            Anio = existente.Anio,
-            Mes = existente.Mes,
-            MateriaId = existente.MateriaId,
-            MateriaNombre = materiaNombre,
-            Comparar = existente.Comparar,
-            Guardada = true
-        }, null);
+        return false;
     }
 
     private static PreferenciaInformeDto PreferenciaPorDefecto()

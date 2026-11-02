@@ -33,16 +33,26 @@ public class InformesController : ControllerBase
         [FromQuery] bool comparar = false,
         CancellationToken ct = default)
     {
-        var referencia = ZonaHorariaArgentina.ALocal(DateTime.UtcNow);
-        var (informe, error) = await _informes.GenerarAsync(
-            anio ?? referencia.Year,
-            mes ?? referencia.Month,
-            string.IsNullOrWhiteSpace(periodo) ? PeriodosInformeAsignacion.Mes : periodo,
-            materiaId,
-            comparar,
-            ct);
+        try
+        {
+            var referencia = ZonaHorariaArgentina.ALocal(DateTime.UtcNow);
+            var (informe, error) = await _informes.GenerarAsync(
+                anio ?? referencia.Year,
+                mes ?? referencia.Month,
+                string.IsNullOrWhiteSpace(periodo) ? PeriodosInformeAsignacion.Mes : periodo,
+                materiaId,
+                comparar,
+                ct);
 
-        return error is null ? Ok(informe) : BadRequest(new { mensaje = error });
+            return error is null ? Ok(informe) : BadRequest(new { mensaje = error });
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                mensaje = "No se pudo generar el informe."
+            });
+        }
     }
 
     /// <summary>PDF alineado al informe en pantalla (HU34).</summary>
@@ -83,7 +93,22 @@ public class InformesController : ControllerBase
         if (!TryObtenerPersonaId(out var personaId))
             return Unauthorized(new { mensaje = "No se pudo identificar al usuario." });
 
-        return Ok(await _informes.ObtenerPreferenciaAsync(personaId, ct));
+        try
+        {
+            return Ok(await _informes.ObtenerPreferenciaAsync(personaId, ct));
+        }
+        catch (Exception)
+        {
+            var hoy = ZonaHorariaArgentina.ALocal(DateTime.UtcNow);
+            return Ok(new PreferenciaInformeDto
+            {
+                PeriodoTipo = PeriodosInformeAsignacion.Mes,
+                Anio = hoy.Year,
+                Mes = hoy.Month,
+                Comparar = false,
+                Guardada = false
+            });
+        }
     }
 
     [HttpPut("AsignacionesAula/preferencias")]
@@ -97,8 +122,18 @@ public class InformesController : ControllerBase
         if (!TryObtenerPersonaId(out var personaId))
             return Unauthorized(new { mensaje = "No se pudo identificar al usuario." });
 
-        var (preferencia, error) = await _informes.GuardarPreferenciaAsync(personaId, dto, ct);
-        return error is null ? Ok(preferencia) : BadRequest(new { mensaje = error });
+        try
+        {
+            var (preferencia, error) = await _informes.GuardarPreferenciaAsync(personaId, dto, ct);
+            return error is null ? Ok(preferencia) : BadRequest(new { mensaje = error });
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                mensaje = "No se pudo guardar la preferencia del informe."
+            });
+        }
     }
 
     private bool TryObtenerPersonaId(out int personaId)

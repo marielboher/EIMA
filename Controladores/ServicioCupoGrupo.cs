@@ -152,6 +152,13 @@ public class ServicioCupoGrupo
                     "No se encontró el grupo solicitado.");
             }
 
+            if (grupo.Estado != EstadosAsignacionAula.Abierta)
+            {
+                return ResultadoOperacionCupo.Fallo(
+                    CodigosCupo.GrupoCerrado,
+                    "El grupo está cerrado y no admite altas ni bajas de alumnos.");
+            }
+
             var vinculo = await _context.InscripcionesGrupo
                 .Include(v => v.Persona)
                 .FirstOrDefaultAsync(v =>
@@ -277,7 +284,7 @@ public class ServicioCupoGrupo
 
         string? motivo = null;
         if (cerrado)
-            motivo = "El grupo está cerrado y no admite nuevas altas.";
+            motivo = "El grupo está cerrado: no se pueden agregar ni dar de baja alumnos.";
         else if (vencido)
             motivo = "El grupo no admite altas porque su vigencia venció.";
         else if (completo)
@@ -315,7 +322,7 @@ public class ServicioCupoGrupo
         {
             return ResultadoOperacionCupo.Fallo(
                 CodigosCupo.GrupoCerrado,
-                "El grupo está cerrado y no admite nuevas altas.");
+                "El grupo está cerrado y no admite altas ni bajas de alumnos.");
         }
 
         if (grupo.FinVigencia <= DateTime.UtcNow)

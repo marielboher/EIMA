@@ -237,7 +237,7 @@ public class ServicioCupoGrupoPruebas : IDisposable
     }
 
     [Fact]
-    public async Task Cerrar_el_grupo_conserva_vinculos_y_bloquea_altas()
+    public async Task Cerrar_el_grupo_conserva_vinculos_y_bloquea_altas_y_bajas()
     {
         await using var db = _base.NuevoContexto();
         var servicio = _base.NuevoServicio(db);
@@ -255,7 +255,9 @@ public class ServicioCupoGrupoPruebas : IDisposable
         Assert.Single(listado!.Alumnos);
         Assert.False(listado.AdmiteAltas);
         Assert.Equal(CodigosCupo.GrupoCerrado, (await servicio.VincularAsync(grupoId, otro, CancellationToken.None)).Codigo);
+        Assert.Equal(CodigosCupo.GrupoCerrado, (await servicio.DarBajaVinculoAsync(grupoId, vinculado, CancellationToken.None)).Codigo);
         Assert.Equal(1, (await db.AsignacionesAula.AsNoTracking().SingleAsync(a => a.Id == grupoId)).CuposOcupados);
+        Assert.Null((await db.InscripcionesGrupo.AsNoTracking().SingleAsync(v => v.PersonaId == vinculado)).FechaBaja);
     }
 
     public void Dispose() => _base.Dispose();

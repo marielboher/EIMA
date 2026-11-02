@@ -8,7 +8,7 @@ public class PreferenciaInformeAsignacion
     public int Id { get; set; }
 
     public int PersonaId { get; set; }
-    public Persona Persona { get; set; } = null!;
+    public Persona? Persona { get; set; }
 
     /// <summary>mes | ultimos3meses.</summary>
     public string PeriodoTipo { get; set; } = PeriodosInformeAsignacion.Mes;

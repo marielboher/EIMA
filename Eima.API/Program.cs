@@ -30,7 +30,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(CorsPolicyFrontend, policy =>
         policy
-            .WithOrigins(corsOrigens)
+            .SetIsOriginAllowed(origin => EsOrigenPermitido(origin, corsOrigens))
             .AllowAnyHeader()
             .AllowAnyMethod()
             .WithExposedHeaders("Content-Disposition")
@@ -165,6 +165,25 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors(CorsPolicyFrontend);
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (Exception)
+    {
+        if (context.Response.HasStarted)
+            throw;
+
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            mensaje = "No se pudo completar la operación."
+        });
+    }
+});
 
 var webRoot = string.IsNullOrWhiteSpace(app.Environment.WebRootPath)
     ? Path.Combine(app.Environment.ContentRootPath, "wwwroot")
@@ -190,6 +209,26 @@ app.Run();
 /// Acepta array (Cors__Origenes__0, __1…) o un solo string separado por comas/punto y coma:
 /// Cors__Origenes=https://app.vercel.app,http://localhost:5173
 /// </summary>
+static bool EsOrigenPermitido(string? origin, string[] configurados)
+{
+    if (string.IsNullOrWhiteSpace(origin))
+        return false;
+
+    var normalizado = origin.Trim().TrimEnd('/');
+    if (configurados.Contains(normalizado, StringComparer.OrdinalIgnoreCase))
+        return true;
+
+    if (!Uri.TryCreate(normalizado, UriKind.Absolute, out var uri))
+        return false;
+
+    if (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+        uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+        return true;
+
+    return uri.Host.Equals("eima-front.vercel.app", StringComparison.OrdinalIgnoreCase)
+           || uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+}
+
 static string[] ResolverOrigenesCors(IConfiguration configuration)
 {
     var defaults = new[]
@@ -197,7 +236,12 @@ static string[] ResolverOrigenesCors(IConfiguration configuration)
         "http://localhost:5173",
         "https://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://127.0.0.1:5173"
+        "https://127.0.0.1:5173",
+        "http://localhost:4173",
+        "https://localhost:4173",
+        "http://127.0.0.1:4173",
+        "https://127.0.0.1:4173",
+        "https://eima-front.vercel.app"
     };
 
     var comoArray = configuration.GetSection("Cors:Origenes").Get<string[]>();

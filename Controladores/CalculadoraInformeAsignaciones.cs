@@ -25,7 +25,19 @@ public sealed class AsignacionInformeOrigen
 /// </summary>
 public static class CalculadoraInformeAsignaciones
 {
-    private static readonly CultureInfo Espanol = CultureInfo.GetCultureInfo("es-AR");
+    private static readonly CultureInfo Espanol = CrearCultura();
+
+    private static CultureInfo CrearCultura()
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo("es-AR");
+        }
+        catch (CultureNotFoundException)
+        {
+            return CultureInfo.InvariantCulture;
+        }
+    }
 
     public static VentanaInforme Ventana(string periodoTipo, int anio, int mes)
     {
